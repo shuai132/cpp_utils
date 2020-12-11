@@ -3,7 +3,7 @@
 #include <functional>
 #include <utility>
 
-namespace {
+namespace detail {
 
 class DeferHelper {
 public:
@@ -27,6 +27,6 @@ struct DeferOp {
 
 #define __DEFER_CAT_(a, b) a##b
 #define __DEFER_CAT(a, b) __DEFER_CAT_(a, b)
-#define defer auto __DEFER_CAT(__defer__, __COUNTER__) = DeferOp()<<
+#define defer auto __DEFER_CAT(__defer__, __COUNTER__) = detail::DeferOp()<<
 
 }
