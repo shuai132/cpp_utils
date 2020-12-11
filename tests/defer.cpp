@@ -1,0 +1,11 @@
+#include "defer.h"
+
+int main() {
+    defer []{
+        printf("1\n");
+    };
+    defer []{
+        printf("2\n");
+    };
+    return 0;
+}
