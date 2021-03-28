@@ -11,7 +11,10 @@
  */
 template<typename T>
 class thread_safe {
+public:
     using ST = std::shared_ptr<T>;
+
+private:
     struct W {
         explicit W(std::mutex& lock, ST& data):lock(lock), data(data){}
         std::unique_lock<std::mutex> lock;
@@ -22,8 +25,11 @@ class thread_safe {
     };
 
 public:
-    template<class ...Args>
+    template<typename ...Args>
     explicit thread_safe(Args&& ...args):_data(std::make_shared<T>(std::forward<Args>(args)...)){}
+
+    template<typename E>
+    thread_safe(std::initializer_list<E> il):_data(std::make_shared<T>(il)){}
 
     inline W operator->() {
         return W{_mutex, _data};

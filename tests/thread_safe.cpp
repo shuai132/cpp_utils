@@ -6,7 +6,6 @@
 int main() {
     const size_t kMaxCount = 10000;
     thread_safe<std::vector<int>> container;
-
     std::vector<std::future<void>> results;
     std::atomic<size_t> count{0};
 
@@ -17,7 +16,7 @@ int main() {
                 if (count++ >= kMaxCount) return;
                 container->push_back(count);
                 // or
-                container.lock([&](const std::shared_ptr<std::vector<int>>& c){
+                container.lock([&](const decltype(container)::ST& c){
                     c->push_back(count);
                 });
             }

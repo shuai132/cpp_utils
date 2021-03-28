@@ -5,7 +5,7 @@
 
 int main() {
     copy_on_write<std::vector<int>> l;
-    using SC = std::shared_ptr<std::vector<int>>;
+    using ST = decltype(l)::ST;
 
     const size_t WriteNum = 10000;
     volatile size_t deleteNum = 0;
@@ -18,7 +18,7 @@ int main() {
         for(;;) {
             static size_t i;
             if(i++ == WriteNum) return;
-            l.writeOp([](const SC& l) {
+            l.writeOp([](const ST& l) {
                 l->push_back(i);
                 printf("+: %zu, uc:%ld\n", l->size(), l.use_count());
             });
@@ -27,7 +27,7 @@ int main() {
     std::thread deleteThread([&]{
         for(;;) {
             if (stop) return;
-            l.writeOp([&](const SC& l) {
+            l.writeOp([&](const ST& l) {
                 if (l->empty()) return;
                 l->erase(l->cbegin());
                 deleteNum++;
@@ -37,7 +37,7 @@ int main() {
     });
     std::thread readThread([&]{
         for(;;) {
-            l.readOp([&](const SC& l) {
+            l.readOp([&](const ST& l) {
                 readTimes++;
                 printf(" : %zu, uc:%ld\n", l->size(), l.use_count());
             });
