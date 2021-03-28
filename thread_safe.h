@@ -40,6 +40,11 @@ public:
         op(_data);
     }
 
+public:
+    // noncopyable
+    thread_safe(const thread_safe&) = delete;
+    const thread_safe& operator=(const thread_safe&) = delete;
+
 private:
     std::mutex _mutex;
     ST _data;

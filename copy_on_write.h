@@ -41,6 +41,11 @@ public:
         return std::atomic_load(&_data);
     }
 
+public:
+    // noncopyable
+    copy_on_write(const copy_on_write&) = delete;
+    const copy_on_write& operator=(const copy_on_write&) = delete;
+
 private:
     ST _data = std::make_shared<T>();
     std::mutex _mutex;
