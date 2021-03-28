@@ -3,12 +3,22 @@
 #include <mutex>
 #include <functional>
 
+enum class Type {
+    Default,
+    ReadWrite,
+};
+
+enum class LockType {
+    Read,
+    Write,
+};
+
 /**
  * Thread Safe Template
  *
  * @tparam T
  */
-template<typename T>
+template<typename T, Type type = Type::Default>
 class thread_safe {
 private:
     struct W {
@@ -31,9 +41,34 @@ public:
         return W{_mutex, _data};
     }
 
-    inline void lock(const std::function<void(T*)>& op) {
+    template <typename TT=void>
+    inline
+    typename std::enable_if<type==Type::Default, TT>::type
+    lock(const std::function<void(T*)>& op) {
         std::unique_lock<std::mutex> lock(_mutex);
         op(&_data);
+    }
+
+    template <typename R=void>
+    inline
+    typename std::enable_if<type==Type::ReadWrite, R>::type
+    lock(LockType lockType, const std::function<void(T*)>& op) {
+        std::unique_lock<std::mutex> lock(lockType == LockType::Read ? _mutexRead : _mutexWrite);
+        op(&_data);
+    }
+
+    template <typename R=W>
+    inline
+    typename std::enable_if<type==Type::ReadWrite, R>::type
+    read() {
+        return W{_mutexRead, _data};
+    }
+
+    template <typename R=W>
+    inline
+    typename std::enable_if<type==Type::ReadWrite, R>::type
+    write() {
+        return W{_mutexWrite, _data};
     }
 
 public:
@@ -43,5 +78,7 @@ public:
 
 private:
     std::mutex _mutex;
+    std::mutex _mutexRead;
+    std::mutex _mutexWrite;
     T _data;
 };

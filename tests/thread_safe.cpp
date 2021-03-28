@@ -5,7 +5,10 @@
 
 int main() {
     const size_t kMaxCount = 10000;
-    thread_safe<std::vector<int>> container;
+    thread_safe<std::vector<int>, Type::ReadWrite> container;
+    container.read()->size();
+    container.write()->push_back(1);
+
     std::vector<std::future<void>> results;
     std::atomic<size_t> count{0};
 
@@ -14,9 +17,9 @@ int main() {
         auto t = std::async(std::launch::async, [&]{
             for(;;) {
                 if (count++ >= kMaxCount) return;
-                container->push_back(count);
+                container.write()->push_back(count);
                 // or
-                container.lock([&](std::vector<int>* c){
+                container.lock(LockType::Write, [&](std::vector<int>* c){
                     c->push_back(count);
                 });
             }
