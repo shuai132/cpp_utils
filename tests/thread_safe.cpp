@@ -16,7 +16,7 @@ int main() {
                 if (count++ >= kMaxCount) return;
                 container->push_back(count);
                 // or
-                container.lock([&](const decltype(container)::ST& c){
+                container.lock([&](std::vector<int>* c){
                     c->push_back(count);
                 });
             }
