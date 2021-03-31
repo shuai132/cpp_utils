@@ -6,6 +6,7 @@
 enum class Type {
     Default,
     ReadWrite,
+    CopyOnWrite,
 };
 
 /**
@@ -109,3 +110,7 @@ private:
     std::mutex _mutexRead;
     std::mutex _mutexWrite;
 };
+
+#include "copy_on_write.h"
+template <typename T>
+class thread_safe<T, Type::CopyOnWrite> : public copy_on_write<T> {};

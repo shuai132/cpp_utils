@@ -1,10 +1,12 @@
 #include <cstdio>
 #include <vector>
 #include <thread>
-#include "copy_on_write.h"
+#include "thread_safe.h"
 
 int main() {
-    copy_on_write<std::vector<int>> l;
+    thread_safe<std::vector<int>, Type::CopyOnWrite> l;
+    // or
+    // copy_on_write<std::vector<int>> l;
     using ST = decltype(l)::ST;
 
     const size_t WriteNum = 10000;
@@ -18,7 +20,7 @@ int main() {
         for(;;) {
             static size_t i;
             if(i++ == WriteNum) return;
-            l.writeOp([](const ST& l) {
+            l.lockWrite([](const ST& l) {
                 l->push_back(i);
                 printf("+: %zu, uc:%ld\n", l->size(), l.use_count());
             });
@@ -27,7 +29,7 @@ int main() {
     std::thread deleteThread([&]{
         for(;;) {
             if (stop) return;
-            l.writeOp([&](const ST& l) {
+            l.lockWrite([&](const ST& l) {
                 if (l->empty()) return;
                 l->erase(l->cbegin());
                 deleteNum++;
@@ -37,7 +39,7 @@ int main() {
     });
     std::thread readThread([&]{
         for(;;) {
-            l.readOp([&](const ST& l) {
+            l.lockRead([&](const ST& l) {
                 readTimes++;
                 printf(" : %zu, uc:%ld\n", l->size(), l.use_count());
             });
