@@ -8,11 +8,6 @@ enum class Type {
     ReadWrite,
 };
 
-enum class LockType {
-    Read,
-    Write,
-};
-
 /**
  * Thread Safe Template
  *
@@ -91,8 +86,13 @@ public:
         return W{_mutexRead, _data};
     }
 
-    inline void lock(LockType lockType, const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(lockType == LockType::Read ? _mutexRead : _mutexWrite);
+    inline void lockRead(const std::function<void(T*)>& op) {
+        std::unique_lock<std::mutex> lock(_mutexRead);
+        op(&_data);
+    }
+
+    inline void lockWrite(const std::function<void(T*)>& op) {
+        std::unique_lock<std::mutex> lock(_mutexWrite);
         op(&_data);
     }
 

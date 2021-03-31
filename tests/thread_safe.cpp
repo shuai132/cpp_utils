@@ -45,7 +45,7 @@ int main() {
                 /// test container_rw
                 container_rw.write()->push_back(count);
                 // or
-                container_rw.lock(LockType::Write, [&](std::vector<int>* c){
+                container_rw.lockWrite([&](std::vector<int>* c){
                     c->push_back(count);
                 });
             }
