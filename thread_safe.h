@@ -65,7 +65,7 @@ public:
     }
 
     inline void lock(const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         op(&_data);
     }
 
@@ -87,12 +87,12 @@ public:
     }
 
     inline void lockRead(const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(_mutexRead);
+        std::lock_guard<std::mutex> lock(_mutexRead);
         op(&_data);
     }
 
     inline void lockWrite(const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(_mutexWrite);
+        std::lock_guard<std::mutex> lock(_mutexWrite);
         op(&_data);
     }
 
