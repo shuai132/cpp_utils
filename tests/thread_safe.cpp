@@ -6,14 +6,22 @@
 int main() {
     const size_t kMaxCount = 10000;
 
-    thread_safe<std::vector<int>> container;
-    // or
-    // thread_safe<std::vector<int>, Type::Default> container;
+    thread_safe<std::vector<int>/*, Type::Default*/> container;
+    {
+        /// test constructor
+        thread_safe<std::vector<int>> container2(1,2);
+        thread_safe<std::vector<int>> container3{1,2,3};
+    }
     container->size();
     container->push_back({});
     container->pop_back();
 
     thread_safe<std::vector<int>, Type::ReadWrite> container_rw;
+    {
+        /// test constructor
+        thread_safe<std::vector<int>, Type::ReadWrite> container_rw2(1,2);
+        thread_safe<std::vector<int>, Type::ReadWrite> container_rw3{1,2,3};
+    }
     container_rw.read()->size();
     container_rw.write()->push_back({});
     container_rw.write()->pop_back();

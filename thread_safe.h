@@ -19,83 +19,93 @@ enum class LockType {
  * @tparam T
  */
 template<typename T, Type type = Type::Default>
-class thread_safe {
-private:
-    struct W {
-        explicit W(std::mutex& lock, T& data):lock(lock), data(data){}
-        std::unique_lock<std::mutex> lock;
-        T& data;
-        inline T* operator->() {
-            return &data;
-        }
-    };
+class thread_safe {};
 
+namespace detail {
+
+template<typename T>
+class thread_safe_base {
 public:
     template<typename ...Args>
-    explicit thread_safe(Args&& ...args):_data(std::forward<Args>(args)...){}
+    explicit thread_safe_base(Args&& ...args):_data(std::forward<Args>(args)...){}
 
     template<typename E>
-    thread_safe(std::initializer_list<E> il):_data(il){}
-
-    template <typename R=W>
-    inline
-    typename std::enable_if<type==Type::Default, R>::type
-    operator->() {
-        return W{_mutex.mutex, _data};
-    }
-
-    template <typename R=W>
-    inline
-    typename std::enable_if<type==Type::ReadWrite, R>::type
-    operator->() {
-        return W{_mutex.read, _data};
-    }
-
-    template <typename TT=void>
-    inline
-    typename std::enable_if<type==Type::Default, TT>::type
-    lock(const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(_mutex.mutex);
-        op(&_data);
-    }
-
-    template <typename R=void>
-    inline
-    typename std::enable_if<type==Type::ReadWrite, R>::type
-    lock(LockType lockType, const std::function<void(T*)>& op) {
-        std::unique_lock<std::mutex> lock(lockType == LockType::Read ? _mutex.read : _mutex.write);
-        op(&_data);
-    }
-
-    template <typename R=W>
-    inline
-    typename std::enable_if<type==Type::ReadWrite, R>::type
-    read() {
-        return W{_mutex.read, _data};
-    }
-
-    template <typename R=W>
-    inline
-    typename std::enable_if<type==Type::ReadWrite, R>::type
-    write() {
-        return W{_mutex.write, _data};
-    }
+    thread_safe_base(std::initializer_list<E> il):_data(il){}
 
 public:
     // noncopyable
-    thread_safe(const thread_safe&) = delete;
-    const thread_safe& operator=(const thread_safe&) = delete;
+    thread_safe_base(const thread_safe_base&) = delete;
+    const thread_safe_base& operator=(const thread_safe_base&) = delete;
+
+public:
+    T _data;
+};
+
+template<typename T>
+struct Wrapper {
+    explicit Wrapper(std::mutex& lock, T& data): lock(lock), data(data){}
+    std::unique_lock<std::mutex> lock;
+    T& data;
+    inline T* operator->() {
+        return &data;
+    }
+};
+
+}
+
+/**
+ *
+ * @tparam T
+ */
+template<typename T>
+class thread_safe<T, Type::Default> : public detail::thread_safe_base<T> {
+private:
+    using W = detail::Wrapper<T>;
+
+public:
+    using detail::thread_safe_base<T>::thread_safe_base;
+
+    inline W operator->() {
+        return W{_mutex, _data};
+    }
+
+    inline void lock(const std::function<void(T*)>& op) {
+        std::unique_lock<std::mutex> lock(_mutex);
+        op(&_data);
+    }
 
 private:
-    struct MutexDefault {
-        std::mutex mutex;
-    };
-    struct MutexReadWrite {
-        std::mutex read;
-        std::mutex write;
-    };
+    T& _data = detail::thread_safe_base<T>::_data;
+    std::mutex _mutex;
+};
 
-    using Mutex = typename std::conditional<type == Type::Default, MutexDefault, MutexReadWrite>::type;
-    Mutex _mutex;
-    T _data;
+template<typename T>
+class thread_safe<T, Type::ReadWrite> : public detail::thread_safe_base<T> {
+private:
+    using W = detail::Wrapper<T>;
+
+public:
+    using detail::thread_safe_base<T>::thread_safe_base;
+
+    inline W operator->() {
+        return W{_mutexRead, _data};
+    }
+
+    inline void lock(LockType lockType, const std::function<void(T*)>& op) {
+        std::unique_lock<std::mutex> lock(lockType == LockType::Read ? _mutexRead : _mutexWrite);
+        op(&_data);
+    }
+
+    inline W read() {
+        return W{_mutexRead, _data};
+    }
+
+    inline W write() {
+        return W{_mutexWrite, _data};
+    }
+
+private:
+    T& _data = detail::thread_safe_base<T>::_data;
+    std::mutex _mutexRead;
+    std::mutex _mutexWrite;
 };
