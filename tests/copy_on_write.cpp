@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <vector>
 #include <thread>
-#include "thread_safe.h"
+#include "concurrent/thread_safe.h"
 
 int main() {
     thread_safe<std::vector<int>, Type::CopyOnWrite> l;

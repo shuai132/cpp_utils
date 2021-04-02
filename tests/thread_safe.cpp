@@ -1,7 +1,7 @@
 #include <vector>
 #include <atomic>
 #include <future>
-#include "thread_safe.h"
+#include "concurrent/thread_safe.h"
 
 int main() {
     const size_t kMaxCount = 10000;
