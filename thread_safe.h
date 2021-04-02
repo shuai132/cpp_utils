@@ -2,6 +2,9 @@
 
 #include <mutex>
 #include <functional>
+#include <shared_mutex>
+
+#include "copy_on_write.h"
 
 enum class Type {
     Default,
@@ -15,7 +18,7 @@ enum class Type {
  * @tparam T
  */
 template<typename T, Type type = Type::Default>
-class thread_safe {};
+class thread_safe;
 
 namespace detail {
 
@@ -78,39 +81,54 @@ private:
 template<typename T>
 class thread_safe<T, Type::ReadWrite> : public detail::thread_safe_base<T> {
 private:
-    using W = detail::Wrapper<T>;
+    struct WrapperRead {
+        explicit WrapperRead(std::shared_timed_mutex& lock, T& data): lock(lock), data(data){}
+        std::shared_lock<std::shared_timed_mutex> lock;
+        T& data;
+        inline T* operator->() {
+            return &data;
+        }
+    };
+    struct WrapperWrite {
+        explicit WrapperWrite(std::shared_timed_mutex& lock, T& data): lock(lock), data(data){}
+        std::unique_lock<std::shared_timed_mutex> lock;
+        T& data;
+        inline T* operator->() {
+            return &data;
+        }
+    };
+    using WR = WrapperRead;
+    using WW = WrapperWrite;
 
 public:
     using detail::thread_safe_base<T>::thread_safe_base;
 
-    inline W operator->() {
-        return W{_mutexRead, _data};
+    inline WR operator->() {
+        return WR{_mutex, _data};
     }
 
     inline void lockRead(const std::function<void(T*)>& op) {
-        std::lock_guard<std::mutex> lock(_mutexRead);
+        std::shared_lock<std::shared_timed_mutex> lock(_mutex);
         op(&_data);
     }
 
     inline void lockWrite(const std::function<void(T*)>& op) {
-        std::lock_guard<std::mutex> lock(_mutexWrite);
+        std::lock_guard<std::shared_timed_mutex> lock(_mutex);
         op(&_data);
     }
 
-    inline W read() {
-        return W{_mutexRead, _data};
+    inline WR read() {
+        return WR{_mutex, _data};
     }
 
-    inline W write() {
-        return W{_mutexWrite, _data};
+    inline WW write() {
+        return WW{_mutex, _data};
     }
 
 private:
     T& _data = detail::thread_safe_base<T>::_data;
-    std::mutex _mutexRead;
-    std::mutex _mutexWrite;
+    std::shared_timed_mutex _mutex;
 };
 
-#include "copy_on_write.h"
 template <typename T>
 class thread_safe<T, Type::CopyOnWrite> : public copy_on_write<T> {};
