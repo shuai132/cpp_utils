@@ -8,7 +8,7 @@
 /**
  * Copy On Write (COW) container wrapper implementation
  * support multi-thread read and write operator on container
- * Note: should *not* modify data on readOp
+ * Note: should *not* modify data on lockRead and operator->
  *
  * @tparam T should support deep copy, can be std::vector<T>, std::list<T>, std::map<K,V>...
  */
