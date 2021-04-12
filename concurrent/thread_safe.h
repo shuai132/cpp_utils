@@ -17,7 +17,7 @@ enum class Type {
  *
  * @tparam T
  */
-template<typename T, Type type = Type::Default>
+template<typename T, Type type = Type::Default, typename MutexType = std::mutex>
 class thread_safe;
 
 namespace detail {
@@ -40,10 +40,10 @@ public:
     T _data;
 };
 
-template<typename T>
+template<typename T, typename MutexType>
 struct Wrapper {
-    explicit Wrapper(std::mutex& lock, T& data): lock(lock), data(data){}
-    std::unique_lock<std::mutex> lock;
+    explicit Wrapper(MutexType& lock, T& data): lock(lock), data(data){}
+    std::unique_lock<MutexType> lock;
     T& data;
     inline T* operator->() {
         return &data;
@@ -56,10 +56,10 @@ struct Wrapper {
  *
  * @tparam T
  */
-template<typename T>
-class thread_safe<T, Type::Default> : public detail::thread_safe_base<T> {
+template<typename T, typename MutexType>
+class thread_safe<T, Type::Default, MutexType> : public detail::thread_safe_base<T> {
 private:
-    using W = detail::Wrapper<T>;
+    using W = detail::Wrapper<T, MutexType>;
 
 public:
     using detail::thread_safe_base<T>::thread_safe_base;
@@ -69,17 +69,17 @@ public:
     }
 
     inline void lock(const std::function<void(T*)>& op) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        std::lock_guard<MutexType> lock(_mutex);
         op(&_data);
     }
 
 private:
     T& _data = detail::thread_safe_base<T>::_data;
-    std::mutex _mutex;
+    MutexType _mutex;
 };
 
-template<typename T>
-class thread_safe<T, Type::ReadWrite> : public detail::thread_safe_base<T> {
+template<typename T, typename MutexType>
+class thread_safe<T, Type::ReadWrite, MutexType> : public detail::thread_safe_base<T> {
 private:
     struct WrapperRead {
         explicit WrapperRead(std::shared_timed_mutex& lock, T& data): lock(lock), data(data){}
