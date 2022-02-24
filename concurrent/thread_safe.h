@@ -26,10 +26,10 @@ template<typename T>
 class thread_safe_base {
 public:
     template<typename ...Args>
-    explicit thread_safe_base(Args&& ...args):_data(std::forward<Args>(args)...){}
+    explicit thread_safe_base(Args&& ...args): data_(std::forward<Args>(args)...){}
 
     template<typename E>
-    thread_safe_base(std::initializer_list<E> il):_data(il){}
+    thread_safe_base(std::initializer_list<E> il): data_(il){}
 
 public:
     // noncopyable
@@ -37,7 +37,7 @@ public:
     const thread_safe_base& operator=(const thread_safe_base&) = delete;
 
 public:
-    T _data;
+    T data_;
 };
 
 template<typename T, typename MutexType>
@@ -65,17 +65,17 @@ public:
     using detail::thread_safe_base<T>::thread_safe_base;
 
     inline W operator->() {
-        return W{_mutex, _data};
+        return W{mutex_, data_};
     }
 
     inline void lock(const std::function<void(T*)>& op) {
-        std::lock_guard<MutexType> lock(_mutex);
-        op(&_data);
+        std::lock_guard<MutexType> lock(mutex_);
+        op(&data_);
     }
 
 private:
-    T& _data = detail::thread_safe_base<T>::_data;
-    MutexType _mutex;
+    T&data_ = detail::thread_safe_base<T>::data_;
+    MutexType mutex_;
 };
 
 template<typename T, typename MutexType>
@@ -104,30 +104,30 @@ public:
     using detail::thread_safe_base<T>::thread_safe_base;
 
     inline WR operator->() {
-        return WR{_mutex, _data};
+        return WR{mutex_, data_};
     }
 
     inline void lockRead(const std::function<void(T*)>& op) {
-        std::shared_lock<std::shared_timed_mutex> lock(_mutex);
-        op(&_data);
+        std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+        op(&data_);
     }
 
     inline void lockWrite(const std::function<void(T*)>& op) {
-        std::lock_guard<std::shared_timed_mutex> lock(_mutex);
-        op(&_data);
+        std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+        op(&data_);
     }
 
     inline WR read() {
-        return WR{_mutex, _data};
+        return WR{mutex_, data_};
     }
 
     inline WW write() {
-        return WW{_mutex, _data};
+        return WW{mutex_, data_};
     }
 
 private:
-    T& _data = detail::thread_safe_base<T>::_data;
-    std::shared_timed_mutex _mutex;
+    T&data_ = detail::thread_safe_base<T>::data_;
+    std::shared_timed_mutex mutex_;
 };
 
 template <typename T>

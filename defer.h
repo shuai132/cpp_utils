@@ -7,15 +7,15 @@ namespace detail {
 
 class DeferHelper {
 public:
-    explicit DeferHelper(std::function<void()> func): _func(std::move(func)) {}
-    ~DeferHelper() { _func(); }
+    explicit DeferHelper(std::function<void()> func): func_(std::move(func)) {}
+    ~DeferHelper() { func_(); }
 
     DeferHelper(const DeferHelper&) = delete;
     void operator=(const DeferHelper&) = delete;
     DeferHelper(DeferHelper&&) = default;
 
 private:
-    std::function<void()> _func;
+    std::function<void()> func_;
 };
 
 struct DeferOp {

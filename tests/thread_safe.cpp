@@ -4,7 +4,7 @@
 #include "concurrent/thread_safe.h"
 
 int main() {
-    const size_t kMaxCount = 10000;
+    const int kMaxCount = 10000;
 
     thread_safe<std::vector<int>/*, Type::Default*/> container;
     {
@@ -27,7 +27,7 @@ int main() {
     container_rw.write()->pop_back();
 
     std::vector<std::future<void>> results;
-    std::atomic<size_t> count{0};
+    std::atomic<int> count{0};
 
     const int kThreadNum = 3;
     for(int i=0; i<kThreadNum; i++){
