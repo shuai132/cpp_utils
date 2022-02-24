@@ -22,7 +22,7 @@ public:
     explicit copy_on_write(Args&& ...args): data_(std::make_shared<T>(std::forward<Args>(args)...)){}
 
     template<typename E>
-    copy_on_write(std::initializer_list<E> il): data_(std::make_shared<T>(il)){}
+    copy_on_write(std::initializer_list<E> il): data_(std::make_shared<T>(std::move(il))){}
 
     void lockWrite(const std::function<void(const ST&)>& op) {
         ST d = std::make_shared<T>();

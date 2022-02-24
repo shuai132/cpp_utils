@@ -29,7 +29,7 @@ public:
     explicit thread_safe_base(Args&& ...args): data_(std::forward<Args>(args)...){}
 
     template<typename E>
-    thread_safe_base(std::initializer_list<E> il): data_(il){}
+    thread_safe_base(std::initializer_list<E> il): data_(std::move(il)){}
 
 public:
     // noncopyable
