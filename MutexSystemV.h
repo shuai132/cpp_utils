@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cerrno>
+#include <stdexcept>
 #include <sys/sem.h>
 
 /**
@@ -10,10 +12,18 @@ class MutexSystemV {
 public:
     explicit MutexSystemV(key_t key) {
         id_ = semget(key, 1, IPC_CREAT | IPC_EXCL | 0644);
-        if (id_ == -1) {
-            id_ = semget(key, 0, 0);
-        } else {
+        if (id_ >= 0) {
             semctl(id_, 0, SETVAL, 1);
+        } else if (errno == EEXIST) {
+            id_ = semget(key, 0, 0);
+            // make sure it's initialized
+            for(;;) {
+                semid_ds ds; // NOLINT(cppcoreguidelines-pro-type-member-init)
+                semctl(id_, 0, IPC_STAT, &ds);
+                if (ds.sem_otime != 0) break; // no need sleep
+            }
+        } else {
+            throw std::runtime_error("semget error");
         }
     }
 
