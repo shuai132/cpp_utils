@@ -27,6 +27,6 @@ struct DeferOp {
 
 #define __DEFER_CAT_(a, b) a##b
 #define __DEFER_CAT(a, b) __DEFER_CAT_(a, b)
-#define defer auto __DEFER_CAT(__defer__, __COUNTER__) = detail::DeferOp()<<
+#define defer auto __DEFER_CAT(__defer__, __COUNTER__) = detail::DeferOp()<<[&]()->void
 
 }
