@@ -1,3 +1,5 @@
+#undef __cplusplus
+#define __cplusplus 201103L
 #include "make_unique.h"
 
 int main() {
