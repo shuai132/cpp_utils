@@ -54,8 +54,8 @@ int main() {
     auto endTime = std::chrono::steady_clock::now();
 
     remainNum = l->size();
-    auto timeUs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-    printf("summary: +:%zu, -:%zu, =:%zu, r:%zu, timeUs:%llu\n", WriteNum, deleteNum, remainNum, readTimes, timeUs);
+    size_t timeUs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+    printf("summary: +:%zu, -:%zu, =:%zu, r:%zu, timeUs:%zu\n", WriteNum, deleteNum, remainNum, readTimes, timeUs);
     if (WriteNum - deleteNum == remainNum) {
         printf("success!\n");
         return EXIT_SUCCESS;
