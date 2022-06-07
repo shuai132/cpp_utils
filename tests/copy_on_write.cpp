@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <vector>
 #include <thread>
-#include "concurrent/thread_safe.h"
+#include "concurrent/concurrent.h"
 
 int main() {
-    thread_safe<std::vector<int>, Type::CopyOnWrite> l;
+    concurrent<std::vector<int>, Type::COW> l;
     // or
     // copy_on_write<std::vector<int>> l;
     using ST = decltype(l)::ST;

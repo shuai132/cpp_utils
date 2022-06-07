@@ -1,26 +1,26 @@
 #include <vector>
 #include <atomic>
 #include <future>
-#include "concurrent/thread_safe.h"
+#include "concurrent/concurrent.h"
 
 int main() {
     const int kMaxCount = 10000;
 
-    thread_safe<std::vector<int>/*, Type::Default*/> container;
+    concurrent<std::vector<int>/*, Type::Default*/> container;
     {
         /// test constructor
-        thread_safe<std::vector<int>> container2(1,2);
-        thread_safe<std::vector<int>> container3{1,2,3};
+        concurrent<std::vector<int>> container2(1, 2);
+        concurrent<std::vector<int>> container3{1, 2, 3};
     }
     container->size();
     container->push_back({});
     container->pop_back();
 
-    thread_safe<std::vector<int>, Type::ReadWrite> container_rw;
+    concurrent<std::vector<int>, Type::RW> container_rw;
     {
         /// test constructor
-        thread_safe<std::vector<int>, Type::ReadWrite> container_rw2(1,2);
-        thread_safe<std::vector<int>, Type::ReadWrite> container_rw3{1,2,3};
+        concurrent<std::vector<int>, Type::RW> container_rw2(1, 2);
+        concurrent<std::vector<int>, Type::RW> container_rw3{1, 2, 3};
     }
     container_rw.read()->size();
     container_rw.write()->push_back({});
