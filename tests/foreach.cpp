@@ -1,23 +1,25 @@
-#include <vector>
-#include <cstdio>
-
 #include "foreach.h"
 
+#include <cstdio>
+#include <vector>
+
 int main() {
-    FOR(i, 10) {
-        printf("%d ", i);
-    }
-    printf("\n");
+  FOR(i, 10) {
+    printf("%d ", i);
+  }
+  printf("\n");
 
-    std::vector<int> arrays{1, 2, 3};
-    foreach(arrays, [](int& v) {
-        printf("%d ", v);
-        v++;
-    });
-    printf("\n");
-    foreach(arrays, [](int v) {
-        printf("%d ", v);
-    });
+  std::vector<int> arrays{1, 2, 3};
+  foreach (arrays, [](int& v) {
+    printf("%d ", v);
+    v++;
+  })
+    ;
+  printf("\n");
+  foreach (arrays, [](int v) {
+    printf("%d ", v);
+  })
+    ;
 
-    return 0;
+  return 0;
 }

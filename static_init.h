@@ -3,11 +3,13 @@
 #include <functional>
 
 class StaticCall {
-public:
-    explicit StaticCall(const std::function<void()>& func) noexcept {
-        func();
-    }
+ public:
+  explicit StaticCall(const std::function<void()>& func) noexcept {
+    func();
+  }
 };
+
+// clang-format off
 
 #define __STATIC_CALL_CAT_(a, b)    a##b
 #define __STATIC_CALL_CAT(a, b)     __STATIC_CALL_CAT_(a, b)
