@@ -52,7 +52,8 @@ int main() {
 
   /// 4. dispose destroyed now, so emit will do nothing
   printf("will print nothing after here\n");
-  observer->emit("nothing", 2);
+  std::string msg = "nothing";
+  observer->emit(msg, 2);
 
   return 0;
 }

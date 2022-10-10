@@ -18,11 +18,12 @@ using ObserverId = uint32_t;
 
 struct Scheduler : noncopyable {
   using Callable = std::function<void()>;
+  virtual ~Scheduler() = default;
   virtual void call(Callable callable) = 0;
 };
 
 struct ObserverBase {
-  virtual void detach(ObserverId id) = 0;
+  virtual void disconnect(ObserverId id) = 0;
 };
 
 struct Disposable {
@@ -37,15 +38,15 @@ struct Disposable {
   void dispose() const {
     auto p = ptr.lock();
     if (p) {
-      p->detach(id);
+      p->disconnect(id);
     }
   }
 };
 
-template <typename... Args>
-class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared_from_this<ObserverImpl<Args...>> {
+template <typename... Signature>
+class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared_from_this<ObserverImpl<Signature...>> {
  public:
-  using Func = std::function<void(Args...)>;
+  using Func = std::function<void(Signature...)>;
   using SchedulerSp = std::shared_ptr<Scheduler>;
 
  public:
@@ -59,11 +60,12 @@ class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared
     };
   }
 
-  void detach(ObserverId key) override {
+  void disconnect(ObserverId key) override {
     std::lock_guard<std::mutex> lock(observerMutex_);
     connections_.erase(key);
   }
 
+  template <typename... Args>
   void emit(Args &&...args) {
     std::lock_guard<std::mutex> lock(observerMutex_);
     for (const auto &item : connections_) {
@@ -86,6 +88,8 @@ class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared
 
 }  // namespace detail
 
+using detail::ObserverId;
+
 using detail::Disposable;
 
 using detail::Scheduler;
@@ -97,14 +101,24 @@ class Dispose : noncopyable {
     observers_.emplace_back(std::move(observer));
   }
 
-  ~Dispose() {
+  void dispose() {
     std::lock_guard<std::mutex> lock(mutex_);
     for (const auto &item : observers_) {
       auto ptr = item.ptr.lock();
       if (ptr) {
-        ptr->detach(item.id);
+        ptr->disconnect(item.id);
       }
     }
+    observers_.clear();
+  }
+
+  void clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    observers_.clear();
+  }
+
+  ~Dispose() {
+    dispose();
   }
 
  private:
