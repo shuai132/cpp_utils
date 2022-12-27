@@ -38,6 +38,9 @@ class Reference : noncopyable {
   }
 
   inline T *operator->() {
+    if (count_ <= 0) {
+      throw std::runtime_error("Reference lifecycle error");
+    }
     return t_;
   }
 
