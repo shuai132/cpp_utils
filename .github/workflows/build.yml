@@ -19,7 +19,7 @@ jobs:
       - name: CMake Build
         run: |
           mkdir build && cd build
-          cmake ..
+          cmake -Dcpp_utils_DISABLE_DETAIL_PRINT=ON ..
           make -j2
 
       - name: Test

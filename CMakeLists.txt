@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.13)
 project(cpp_utils)
 
+option(cpp_utils_DISABLE_DETAIL_PRINT "" OFF)
+
 set(CMAKE_CXX_STANDARD 14)
+
+# for github actions/ci
+if (cpp_utils_DISABLE_DETAIL_PRINT)
+    add_definitions(-Dcpp_utils_DISABLE_DETAIL_PRINT)
+endif ()
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE .)

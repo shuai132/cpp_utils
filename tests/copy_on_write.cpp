@@ -4,6 +4,12 @@
 
 #include "concurrent/concurrent.hpp"
 
+#ifndef cpp_utils_DISABLE_DETAIL_PRINT
+#define detail_printf printf
+#else
+#define detail_printf (void*)
+#endif
+
 int main() {
   concurrent<std::vector<size_t>, Type::COW> l;
   // or
@@ -23,7 +29,7 @@ int main() {
       if (i++ == WriteNum) return;
       l.lockWrite([](const ST& l) {
         l->push_back(i);
-        printf("+: %zu, uc:%ld\n", l->size(), l.use_count());
+        detail_printf("+: %zu, uc:%ld\n", l->size(), l.use_count());
       });
     }
   });
@@ -34,7 +40,7 @@ int main() {
         if (l->empty()) return;
         l->erase(l->cbegin());
         deleteNum++;
-        printf("-: %zu, uc:%ld\n", l->size(), l.use_count());
+        detail_printf("-: %zu, uc:%ld\n", l->size(), l.use_count());
       });
     }
   });
@@ -42,7 +48,7 @@ int main() {
     for (;;) {
       l.lockRead([&](const ST& l) {
         readTimes++;
-        printf(" : %zu, uc:%ld\n", l->size(), l.use_count());
+        detail_printf(" : %zu, uc:%ld\n", l->size(), l.use_count());
       });
       if (stop) return;
     }
