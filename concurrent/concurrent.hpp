@@ -4,7 +4,7 @@
 #include <mutex>
 #include <shared_mutex>
 
-#include "copy_on_write.h"
+#include "copy_on_write.hpp"
 
 enum class Type {
   Default,  // mutex lock

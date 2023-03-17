@@ -2,7 +2,7 @@
 #include <future>
 #include <vector>
 
-#include "concurrent/concurrent.h"
+#include "concurrent/concurrent.hpp"
 
 int main() {
   const int kMaxCount = 10000;

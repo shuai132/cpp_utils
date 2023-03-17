@@ -2,7 +2,7 @@
 #include <thread>
 #include <vector>
 
-#include "concurrent/concurrent.h"
+#include "concurrent/concurrent.hpp"
 
 int main() {
   concurrent<std::vector<int>, Type::COW> l;

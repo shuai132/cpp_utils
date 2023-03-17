@@ -1,4 +1,4 @@
-#include "defer.h"
+#include "defer.hpp"
 
 int main() {
   defer {

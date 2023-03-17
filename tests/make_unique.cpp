@@ -1,6 +1,6 @@
 #undef __cplusplus
 #define __cplusplus 201103L
-#include "make_unique.h"
+#include "make_unique.hpp"
 
 int main() {
   auto value = std::make_unique<int>(123);

@@ -1,4 +1,4 @@
-#include "static_init.h"
+#include "static_init.hpp"
 
 static_init([] {
   printf("hello, ");
