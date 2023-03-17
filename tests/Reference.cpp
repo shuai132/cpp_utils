@@ -1,5 +1,7 @@
 #include "Reference.hpp"
 
+#include <cstdio>
+
 struct Test {
   Test() {
     printf("new...\n");

@@ -19,7 +19,7 @@ int main() {
     test("child");
   } else {
     test("parent");
-    pause();
   }
+  sleep(2);
   return 0;
 }

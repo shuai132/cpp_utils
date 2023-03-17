@@ -2,6 +2,8 @@
 
 #include <array>
 #include <csignal>
+#include <cstring>
+#include <mutex>
 #include <ostream>
 #include <string>
 

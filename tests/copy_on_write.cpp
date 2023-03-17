@@ -5,9 +5,9 @@
 #include "concurrent/concurrent.hpp"
 
 int main() {
-  concurrent<std::vector<int>, Type::COW> l;
+  concurrent<std::vector<size_t>, Type::COW> l;
   // or
-  // copy_on_write<std::vector<int>> l;
+  // copy_on_write<std::vector<size_t>> l;
   using ST = decltype(l)::ST;
 
   const size_t WriteNum = 10000;

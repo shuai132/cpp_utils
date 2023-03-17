@@ -1,5 +1,7 @@
 #include "Observer.hpp"
 
+#include <cstdio>
+
 using namespace observer;
 
 struct MainThreadScheduler : public Scheduler {

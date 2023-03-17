@@ -1,5 +1,6 @@
 #include "Shell.hpp"
 
+#include <cstdio>
 #include <iostream>
 #include <thread>
 

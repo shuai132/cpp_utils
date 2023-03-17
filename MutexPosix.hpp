@@ -4,6 +4,8 @@
 #include <sys/fcntl.h>
 #include <sys/time.h>
 
+#include <cstdint>
+
 #include "sem_helper.hpp"
 
 /**
