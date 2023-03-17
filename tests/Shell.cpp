@@ -5,7 +5,7 @@
 #include <thread>
 
 int main() {
-  auto result = Shell::exec("ls");
+  auto result = Shell::exec("uname -a");
   std::cout << result << std::endl;
 
   std::thread([&] {

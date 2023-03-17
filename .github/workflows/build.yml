@@ -22,18 +22,62 @@ jobs:
           cmake -Dcpp_utils_DISABLE_DETAIL_PRINT=ON ..
           make -j2
 
-      - name: Test
+      - name: test_thread_safe
+        run: |
+          cd build
+          ./test_thread_safe
+
+      - name: test_copy_on_write
         run: |
           cd build
           ./test_copy_on_write
+
+      - name: test_defer
+        run: |
+          cd build
           ./test_defer
+
+      - name: test_foreach
+        run: |
+          cd build
           ./test_foreach
+
+      - name: test_make_unique
+        run: |
+          cd build
           ./test_make_unique
+
+      - name: test_MutexPosix
+        run: |
+          cd build
           ./test_MutexPosix
+
+      - name: test_MutexSystemV
+        run: |
+          cd build
           ./test_MutexSystemV
+
+      - name: test_Observer
+        run: |
+          cd build
           ./test_Observer
+
+      - name: test_PerfTracker
+        run: |
+          cd build
           ./test_PerfTracker
+
+      - name: test_Reference
+        run: |
+          cd build
           ./test_Reference
+
+      - name: test_Shell
+        run: |
+          cd build
           ./test_Shell
+
+      - name: test_static_init
+        run: |
+          cd build
           ./test_static_init
-          ./test_thread_safe
