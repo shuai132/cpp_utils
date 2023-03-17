@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: CMake Build
+        run: |
+          mkdir build && cd build
+          cmake ..
+          make -j2
+
+      - name: Test
+        run: |
+          cd build
+          ./test_copy_on_write
+          ./test_defer
+          ./test_foreach
+          ./test_make_unique
+          ./test_MutexPosix
+          ./test_MutexSystemV
+          ./test_Observer
+          ./test_PerfTracker
+          ./test_Reference
+          ./test_Shell
+          ./test_static_init
+          ./test_thread_safe
