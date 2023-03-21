@@ -24,6 +24,7 @@ class MutexSystemV {
     return sem_.p();
   }
 #endif
+
   void unlock() const {
     sem_.v();
   }

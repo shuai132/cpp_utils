@@ -61,6 +61,7 @@ class SemaphoreSystemV {
     return true;
   }
 #endif
+
   void v() const {
     sembuf buf{0, +1, SEM_UNDO};
     semop(id_, &buf, 1);
