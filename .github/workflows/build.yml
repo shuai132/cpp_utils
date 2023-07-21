@@ -81,3 +81,8 @@ jobs:
         run: |
           cd build
           ./test_static_init
+
+      - name: test_RingBuffer
+        run: |
+          cd build
+          ./test_RingBuffer
