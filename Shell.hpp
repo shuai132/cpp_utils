@@ -1,5 +1,8 @@
 #pragma once
 
+#include <sys/fcntl.h>
+#include <unistd.h>
+
 #include <array>
 #include <csignal>
 #include <cstring>
@@ -32,7 +35,6 @@ struct Result {
 Result exec(const std::string &command) {
   static std::mutex mutex;
 
-  std::array<char, 8192> buffer{};
   std::string result;
 #ifdef _WIN32
 #define popen _popen
@@ -51,6 +53,11 @@ Result exec(const std::string &command) {
   };
 #endif
 
+  // avoid deadlock
+  int fp = open("/dev/null", O_WRONLY);
+  dup2(fp, STDIN_FILENO);
+  close(fp);
+
   mutex.lock();
   FILE *pipe = popen(command.c_str(), "r");
   mutex.unlock();
@@ -59,6 +66,7 @@ Result exec(const std::string &command) {
     return {-1, "popen() open failed!"};
   }
   try {
+    std::array<char, 1024> buffer{};
     std::size_t bytesRead;
     while ((bytesRead = std::fread(buffer.data(), sizeof(buffer.at(0)), sizeof(buffer), pipe)) != 0) {
       result += std::string(buffer.data(), bytesRead);
