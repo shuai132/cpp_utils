@@ -9,7 +9,7 @@ struct Test {
     printf("Test: void\n");
   }
 
-  Test(const char *id) : id(id) {
+  Test(const char *id) : id(id) {  // NOLINT(google-explicit-constructor)
     printf("Test: normal constructor: %s\n", id);
   }
 
@@ -19,10 +19,11 @@ struct Test {
     t.id = "void";
   }
 
-  void operator=(Test &&t) noexcept {
+  Test &operator=(Test &&t) noexcept {
     printf("Test: move constructor: %s to %s\n", t.id.c_str(), this->id.c_str());
     this->id = t.id;
     t.id = "void";
+    return *this;
   }
 
   ~Test() {
