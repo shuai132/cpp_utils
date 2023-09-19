@@ -50,6 +50,8 @@ int main() {
 
     /// 3. emit
     observer->emit("hello", 1);
+    // or
+    observer("hello2", 2);
   }
 
   /// 4. dispose destroyed now, so emit will do nothing

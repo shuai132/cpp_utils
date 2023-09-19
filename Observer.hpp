@@ -65,6 +65,11 @@ class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared
     connections_.erase(key);
   }
 
+  void disconnect_all() {
+    std::lock_guard<std::mutex> lock(observerMutex_);
+    connections_.clear();
+  }
+
   template <typename... Args>
   void emit(Args &&...args) {
     std::lock_guard<std::mutex> lock(observerMutex_);
@@ -134,6 +139,10 @@ class Observer : noncopyable {
  public:
   inline ObserverImplSp operator->() {
     return impl_;
+  }
+
+  inline void operator()(Args &&...args) {
+    impl_->emit(std::forward<Args>(args)...);
   }
 
  private:
