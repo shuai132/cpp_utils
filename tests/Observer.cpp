@@ -34,6 +34,8 @@ int main() {
     /// 2.2 connect and disconnect
     observer
         ->connect([](const std::string &msg, int value) {
+          (void)(msg);
+          (void)(value);
           printf("will not be called\n");
         })
         // disconnect
@@ -43,6 +45,8 @@ int main() {
     observer
         ->connect(
             [](const std::string &msg, int value) {
+              (void)(msg);
+              (void)(value);
               printf("will run on main thread\n");
             },
             MainThread)

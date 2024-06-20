@@ -9,80 +9,118 @@ on:
       - '**.md'
 
 jobs:
-  Linux:
-    runs-on: ubuntu-latest
+  build-and-test:
+
+    name: ${{ matrix.toolchain }}-${{ matrix.configuration }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        toolchain:
+          - linux-gcc
+          - macos-clang
+          - windows-msvc
+          - windows-mingw
+
+        configuration:
+          - Debug
+          - Release
+
+        include:
+          - toolchain: linux-gcc
+            os: ubuntu-latest
+            compiler: gcc
+
+          - toolchain: macos-clang
+            os: macos-latest
+            compiler: clang
+
+          - toolchain: windows-msvc
+            os: windows-latest
+            compiler: msvc
+            env:
+              BIN_SUFFIX: ".exe"
+
+          - toolchain: windows-mingw
+            os: windows-latest
+            compiler: mingw
+            env:
+              BIN_SUFFIX: ".exe"
+              CMAKE_OPTIONS: "-G \"MinGW Makefiles\""
+
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
 
-      - name: CMake Build
-        run: |
-          mkdir build && cd build
-          cmake -Dcpp_utils_DISABLE_DETAIL_PRINT=ON ..
-          make -j2
+      - name: Configure (${{ matrix.configuration }})
+        env:
+          ASIO_PATH: asio/asio/include
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} ${{ matrix.env.CMAKE_OPTIONS }} -Dcpp_utils_DISABLE_DETAIL_PRINT=ON
+
+      - name: Build with ${{ matrix.compiler }}
+        run: cmake --build build --config ${{ matrix.configuration }} -j
+
+      - name: Windows-MSVC Compatible
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
+        working-directory: build
+        run: Move-Item -Path .\${{ matrix.configuration }}\* -Destination .\
 
       - name: test_thread_safe
-        run: |
-          cd build
-          ./test_thread_safe
+        if: matrix.os != 'windows-latest'
+        working-directory: build
+        run: ./test_thread_safe${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_copy_on_write
-        run: |
-          cd build
-          ./test_copy_on_write
+        working-directory: build
+        run: ./test_copy_on_write${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_defer
-        run: |
-          cd build
-          ./test_defer
+        working-directory: build
+        run: ./test_defer${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_foreach
-        run: |
-          cd build
-          ./test_foreach
+        working-directory: build
+        run: ./test_foreach${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_make_unique
-        run: |
-          cd build
-          ./test_make_unique
+        if: matrix.os != 'windows-latest'
+        working-directory: build
+        run: ./test_make_unique${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_MutexPosix
-        run: |
-          cd build
-          ./test_MutexPosix
+        if: matrix.os != 'windows-latest'
+        working-directory: build
+        run: ./test_MutexPosix${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_MutexSystemV
-        run: |
-          cd build
-          ./test_MutexSystemV
+        if: matrix.os != 'windows-latest'
+        working-directory: build
+        run: ./test_MutexSystemV${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_Observer
-        run: |
-          cd build
-          ./test_Observer
+        working-directory: build
+        run: ./test_Observer${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_PerfTracker
-        run: |
-          cd build
-          ./test_PerfTracker
+        working-directory: build
+        run: ./test_PerfTracker${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_Reference
-        run: |
-          cd build
-          ./test_Reference
+        working-directory: build
+        run: ./test_Reference${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_Shell
-        run: |
-          cd build
-          ./test_Shell
+        if: matrix.os != 'windows-latest'
+        working-directory: build
+        run: ./test_Shell${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_static_init
-        run: |
-          cd build
-          ./test_static_init
+        working-directory: build
+        run: ./test_static_init${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_RingBuffer
-        run: |
-          cd build
-          ./test_RingBuffer
+        working-directory: build
+        run: ./test_RingBuffer${{ matrix.env.BIN_SUFFIX }}

@@ -24,6 +24,7 @@ struct Scheduler : noncopyable {
 
 struct ObserverBase {
   virtual void disconnect(ObserverId id) = 0;
+  virtual ~ObserverBase() = default;
 };
 
 struct Disposable {
