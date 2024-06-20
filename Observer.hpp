@@ -71,12 +71,12 @@ class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared
   }
 
   template <typename... Args>
-  void emit(Args &&...args) {
+  void emit(const Args &...args) {
     std::lock_guard<std::mutex> lock(observerMutex_);
     for (const auto &item : connections_) {
       auto &pair = item.second;
       if (pair.second == nullptr) {
-        pair.first(std::forward<Args>(args)...);
+        pair.first(args...);
       } else {
         pair.second->call([=] {
           pair.first(args...);
