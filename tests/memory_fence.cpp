@@ -95,7 +95,6 @@ void test_memory_fence_1(uint32_t count) {
  * @param count
  */
 void test_memory_fence_2(uint32_t count) {
-#if defined(__linux__) || defined(__APPLE__)
   for (uint32_t i = 0; i < count; ++i) {
     bool expected = false;
     bool desire = true;
@@ -106,7 +105,6 @@ void test_memory_fence_2(uint32_t count) {
     bool value = false;
     __atomic_store(&spin_locked_2, &value, __ATOMIC_RELEASE);
   }
-#endif
 }
 
 int main() {
