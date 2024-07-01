@@ -21,7 +21,7 @@ endif ()
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE .)
-if (LINUX)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(${PROJECT_NAME} INTERFACE pthread)
 endif ()
 

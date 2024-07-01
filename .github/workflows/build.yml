@@ -124,3 +124,7 @@ jobs:
       - name: test_RingBuffer
         working-directory: build
         run: ./test_RingBuffer${{ matrix.env.BIN_SUFFIX }}
+
+      - name: test_memory_fence
+        working-directory: build
+        run: ./test_memory_fence${{ matrix.env.BIN_SUFFIX }}
