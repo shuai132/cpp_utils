@@ -10,6 +10,7 @@ uint32_t value_spin_lock = 0;
 uint32_t value_spin_lock_relax = 0;
 uint32_t value_memory_fence_1 = 0;
 uint32_t value_memory_fence_2 = 0;
+std::atomic<uint32_t> value_atomic{0};
 std::atomic<bool> spin_locked;
 volatile bool volatile_spin_locked;
 bool spin_locked_2;
@@ -107,6 +108,16 @@ void test_memory_fence_2(uint32_t count) {
   }
 }
 
+/**
+ * 原子变量 使用memory_order_relaxed即可
+ * @param count
+ */
+void test_atomic(uint32_t count) {
+  for (uint32_t i = 0; i < count; ++i) {
+    value_atomic.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
 int main() {
   static const int THREAD_NUM = 5;
   static const int COUNT = 100000;
@@ -126,6 +137,7 @@ int main() {
   test(test_spin_lock_relax);
   test(test_memory_fence_1);
   test(test_memory_fence_2);
+  test(test_atomic);
 
   std::cout << "value_none: " << value_none << std::endl;
   std::cout << "value_mutex: " << value_mutex << std::endl;
@@ -133,6 +145,7 @@ int main() {
   std::cout << "value_spin_lock_relax: " << value_spin_lock_relax << std::endl;
   std::cout << "value_memory_fence_1: " << value_memory_fence_1 << std::endl;
   std::cout << "value_memory_fence_2: " << value_memory_fence_2 << std::endl;
+  std::cout << "value_atomic: " << value_atomic << std::endl;
 
   return 0;
 }
