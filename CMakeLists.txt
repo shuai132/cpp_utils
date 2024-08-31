@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.13)
 project(cpp_utils)
 
 option(cpp_utils_DISABLE_DETAIL_PRINT "" OFF)
+option(cpp_utils_ENABLE_SANITIZE "" OFF)
+
+if (cpp_utils_ENABLE_SANITIZE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+endif ()
 
 if (MSVC)
     set(CMAKE_CXX_STANDARD 20)
@@ -31,7 +37,7 @@ file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/tests/*.cpp)
 foreach (file ${CPP_SRC_LIST})
     string(REGEX REPLACE ".*tests|.cpp|/|\\\\" "" target_name ${file})
 
-    set(unsupported_list Shell MutexSystemV MutexPosix make_unique thread_safe)
+    set(unsupported_list Shell MutexSystemV MutexPosix make_unique thread_safe memory_fence)
     if (WIN32 AND target_name IN_LIST unsupported_list)
         message(STATUS "Windows skip: ${target_name}")
         continue()
