@@ -6,40 +6,31 @@
 
 namespace file_utils {
 
-inline std::shared_ptr<uint8_t> read_file(const std::string &file, size_t *size, bool *ok = nullptr) {
+inline std::shared_ptr<uint8_t> read_file(const std::string &file, size_t *size) {
   std::ifstream ifs(file, std::ios::binary);
   if (!ifs) {
-    if (ok != nullptr) {
-      *ok = false;
-      return {};
-    } else {
-      throw std::runtime_error("failed to open file: " + file);
-    }
+    return nullptr;
   }
-  // 获取文件大小
   ifs.seekg(0, std::ios::end);
   *size = ifs.tellg();
   ifs.seekg(0, std::ios::beg);
 
-  // 申请数据缓存内存
-  std::shared_ptr<uint8_t> fileData(new uint8_t[*size], [](uint8_t *p) {
+  std::shared_ptr<uint8_t> file_data(new uint8_t[*size], [](const uint8_t *p) {
     delete[] p;
   });
-  char *ptr = reinterpret_cast<char *>(fileData.get());
+  char *ptr = reinterpret_cast<char *>(file_data.get());
 
-  // 读取文件
   ifs.read(ptr, *size);  // NOLINT(cppcoreguidelines-narrowing-conversions)
   ifs.close();
-  *ok = true;
-  return fileData;
+  return file_data;
 }
 
-inline bool write_to_file(const void *data, size_t sizeInByte, const std::string &fileName) {
-  std::ofstream outfile(fileName, std::ofstream::binary);
+inline bool write_to_file(const std::string &file_name, const void *data, size_t size_in_bytes) {
+  std::ofstream outfile(file_name, std::ofstream::binary);
   if (!outfile) {
     return false;
   }
-  outfile.write((char *)data, sizeInByte);  // NOLINT(cppcoreguidelines-narrowing-conversions)
+  outfile.write((char *)data, size_in_bytes);  // NOLINT(cppcoreguidelines-narrowing-conversions)
   outfile.close();
   return true;
 }
