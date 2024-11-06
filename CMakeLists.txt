@@ -3,6 +3,7 @@ project(cpp_utils)
 
 option(cpp_utils_DISABLE_DETAIL_PRINT "" OFF)
 option(cpp_utils_ENABLE_SANITIZE "" OFF)
+option(cpp_utils_ENABLE_TEST_CODE "" OFF)
 
 if (cpp_utils_ENABLE_SANITIZE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
@@ -45,3 +46,11 @@ foreach (file ${CPP_SRC_LIST})
 
     add_executable(test_${target_name} ${file})
 endforeach ()
+
+if (cpp_utils_ENABLE_TEST_CODE)
+    file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/*.cpp)
+    foreach (file ${CPP_SRC_LIST})
+        string(REGEX REPLACE ".*test_code|.cpp|/|\\\\" "" target_name ${file})
+        add_executable(${target_name} ${file})
+    endforeach ()
+endif ()
