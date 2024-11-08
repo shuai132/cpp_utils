@@ -1,5 +1,6 @@
 #include <algorithm>
-#include <cstdio>
+
+#include "Test.h"
 
 template <typename T>
 class my_vector {
@@ -41,30 +42,6 @@ class my_vector {
   size_t size = 0;
 
   void* data = nullptr;
-};
-
-class Test {
- public:
-  explicit Test(int v) : v(v) {
-    printf("Test: v: %d\n", v);
-  }
-  ~Test() {
-    printf("~Test: v: %d\n", v);
-  }
-  Test(const Test& other) {
-    printf("copy: %d\n", other.v);
-    this->v = other.v;
-  }
-  Test(Test&& other) noexcept {
-    printf("move: construct: %d\n", other.v);
-    this->v = other.v;
-  }
-  Test& operator=(Test&& other) noexcept {
-    printf("move: operator=: %d\n", other.v);
-    this->v = other.v;
-    return *this;
-  }
-  int v = -1;
 };
 
 int main() {
