@@ -47,7 +47,13 @@ foreach (file ${CPP_SRC_LIST})
     add_executable(test_${target_name} ${file})
 endforeach ()
 
+add_subdirectory(libs)
+link_libraries(test_lib_so)
+link_libraries(test_lib_a)
+
 if (cpp_utils_ENABLE_TEST_CODE)
+    add_compile_options(-g)
+
     file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/*.cpp)
     foreach (file ${CPP_SRC_LIST})
         string(REGEX REPLACE ".*test_code|.cpp|/|\\\\" "" target_name ${file})
