@@ -42,6 +42,15 @@ int main() {
   buffer.push_back("4");
   buffer.push_back("5");
   buffer.push_back("6");
+  buffer.push_back("7");
+  buffer.push_back("8");
+
+  printf("==>\n");
+  auto it = buffer.begin();
+  while (it != buffer.end()) {
+    printf("it: %s\n", (*it).id.c_str());
+    it.next();
+  }
 
   printf("==>\n");
   while (!buffer.empty()) {

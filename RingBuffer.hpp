@@ -53,6 +53,40 @@ class RingBuffer {
     return const_cast<value_type&>(buffer_[(tail_ + N - 1) % N]);
   }
 
+  class Iterator {
+   public:
+    Iterator(RingBuffer* buffer, size_type index, size_type count) : buffer_(buffer), index_(index), count_(count) {}
+
+    value_type& operator*() const {
+      return buffer_->buffer_[index_];
+    }
+
+    Iterator& next() {
+      if (count_ > 0) {
+        index_ = (index_ + 1) % N;
+        --count_;
+      }
+      return *this;
+    }
+
+    bool operator!=(const Iterator& other) const {
+      return index_ != other.index_ || count_ != other.count_;
+    }
+
+   private:
+    RingBuffer* buffer_;
+    size_type index_;
+    size_type count_;
+  };
+
+  Iterator begin() {
+    return Iterator(this, head_, size_);
+  }
+
+  Iterator end() {
+    return Iterator(this, tail_, 0);
+  }
+
  private:
   value_type buffer_[N];
   size_type head_ = 0;
