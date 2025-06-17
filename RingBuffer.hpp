@@ -37,7 +37,7 @@ class RingBuffer {
       return;
     }
 
-    {  // move to tmp and destroy it
+    {  // move to tmp and destroy it, DO NOT use front().~T() here!
       auto tmp = std::move(front());
     }
 
