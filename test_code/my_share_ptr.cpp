@@ -17,10 +17,9 @@ struct control_block {
     }
   }
   T* p = nullptr;
-  uint8_t unused{};
   std::atomic<size_t> ref_count{0};
-  bool from_make_shared = false;
   std::atomic<size_t> weak_ref_count{0};
+  bool from_make_shared = false;
 };
 
 template <typename T>
@@ -57,7 +56,7 @@ class my_shared_ptr {
       } else {
         // mem: delete
         cb->p->~T();
-        cb->~control_block();
+        cb->~control_block<T>();
         auto mem = (char*)cb->p;
         delete[] mem;
       }
@@ -81,23 +80,52 @@ my_shared_ptr<T> my_make_shared_simple(Args&&... args) {
 
 template <typename T, typename... Args>
 my_shared_ptr<T> my_make_shared(Args&&... args) {
-  // mem: new
-  char* mem = new char[sizeof(T) + sizeof(control_block<T>)];
+  // 计算对齐后的偏移量
+  constexpr size_t obj_size = sizeof(T);
+  constexpr size_t obj_align = alignof(T);
+  constexpr size_t cb_align = alignof(control_block<T>);
+
+  // 计算 control_block 的对齐偏移
+  size_t cb_offset = obj_size;
+  if (cb_offset % cb_align != 0) {
+    cb_offset += cb_align - (cb_offset % cb_align);
+  }
+
+  // 分配足够的内存
+  size_t total_size = cb_offset + sizeof(control_block<T>);
+  char* mem = new char[total_size];
+
+  // 在对齐的位置构造对象
   auto obj = new (mem) T(std::forward<Args>(args)...);
-  auto ctb = new (mem + sizeof(T)) control_block<T>();
-  printf("obj: %p\n", obj);
-  printf("ctb: %p\n", ctb);
+  auto ctb = new (mem + cb_offset) control_block<T>();
+
+  printf("obj: %p (align: %zu)\n", obj, obj_align);
+  printf("ctb: %p (align: %zu, offset: %zu)\n", ctb, cb_align, cb_offset);
+
   auto ptr = my_shared_ptr<T>(obj, ctb);
   return ptr;
 }
 
 int main() {
-  my_shared_ptr<Test> sp;
+#if 1
   {
-    my_shared_ptr<Test> sp1 = my_make_shared<Test>(1);
-    printf("v: %d\n", sp1->v);
-    sp = sp1;
+    printf("test:1 simple\n");
+    my_shared_ptr<Test> sp = my_shared_ptr<Test>(new Test());
+    printf("test:1 v: %d\n", sp->v);
   }
-  printf("sp: v: %d\n", sp->v);
+#endif
+
+#if 1
+  {
+    printf("test:2\n");
+    my_shared_ptr<Test> sp;
+    {
+      my_shared_ptr<Test> sp1 = my_make_shared<Test>(1);
+      printf("v: %d\n", sp1->v);
+      sp = sp1;
+    }
+    printf("sp: v: %d\n", sp->v);
+  }
+#endif
   return 0;
 }
