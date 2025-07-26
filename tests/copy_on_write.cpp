@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdlib>
 #include <thread>
 #include <vector>
 
@@ -7,7 +8,7 @@
 #ifndef cpp_utils_DISABLE_DETAIL_PRINT
 #define detail_printf printf
 #else
-#define detail_printf (void*)
+#define detail_printf(...) ((void)0)
 #endif
 
 int main() {
@@ -47,6 +48,7 @@ int main() {
   std::thread readThread([&] {
     for (;;) {
       l.lockRead([&](const ST& l) {
+        (void)(l);
         readTimes++;
         detail_printf(" : %zu, uc:%ld\n", l->size(), l.use_count());
       });

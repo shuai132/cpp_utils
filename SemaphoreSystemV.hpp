@@ -4,6 +4,7 @@
 #include <sys/time.h>
 
 #include <cerrno>
+#include <cstdint>
 #include <stdexcept>
 
 /**

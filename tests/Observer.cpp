@@ -1,6 +1,7 @@
 #include "Observer.hpp"
 
 #include <cstdio>
+#include <string>
 
 using namespace observer;
 
