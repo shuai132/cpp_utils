@@ -449,7 +449,7 @@ L_O_G_FUNCTION void L_O_G_HEX_CHAR(const char *fmt, const void *data, size_t siz
 #define LOGV_HEX_C              L_O_G_HEX_C
 #define LOGV_HEX_D              L_O_G_HEX_C
 #else
-#define LOGV(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define LOGV(fmt, ...)          ((void)0)
 #define LOGV_HEX(...)           ((void)0)
 #define LOGV_HEX_H(...)         ((void)0)
 #define LOGV_HEX_C(...)         ((void)0)
