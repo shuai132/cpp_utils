@@ -4,17 +4,24 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
 
 /**
  * 用于精细的代码耗时分析
- * 为了方便调用 推荐临时定义如下宏
+ * 1. 为了方便调用 推荐定义如下宏
  * #define TRACK(msg)  perfTracker.track(std::string("L:") + std::to_string(__LINE__) + "\t"#msg)
+ * 2. 避免性能损失 默认非线程安全
  */
-template <typename T = std::chrono::milliseconds>
+template <bool ThreadSafe = false, typename Duration = std::chrono::milliseconds>
 class PerfTracker {
+  struct fake_mutex {
+    void lock() {}
+    void unlock() {}
+  };
+
   using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
  public:
@@ -28,7 +35,16 @@ class PerfTracker {
   PerfTracker(PerfTracker &&) noexcept = default;
 
   ~PerfTracker() {
-    auto result = dump();
+    dump();
+  }
+
+  void track(std::string tag) {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    points_.emplace_back(std::move(tag), std::chrono::steady_clock::now());
+  }
+
+  void dump() {
+    auto result = genDump();
     if (dumpHandle) {
       dumpHandle(std::move(result));
     } else {
@@ -36,16 +52,14 @@ class PerfTracker {
     }
   }
 
-  inline uint64_t duration(TimePoint end, TimePoint start) {
-    return std::chrono::duration_cast<T>(end - start).count();
+  void reset() {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    start_ = std::chrono::steady_clock::now();
+    points_.clear();
   }
 
-  void track(std::string tag) {
-    points_.emplace_back(std::move(tag), std::chrono::steady_clock::now());
-  }
-
- private:
-  std::string dump() {
+  std::string genDump() {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     TimePoint end = std::chrono::steady_clock::now();
     std::ostringstream stream;
     stream << "PerfTracker Report begin:\n";
@@ -60,10 +74,16 @@ class PerfTracker {
     return stream.str();
   }
 
+ private:
+  inline uint64_t duration(TimePoint end, TimePoint start) {
+    return std::chrono::duration_cast<Duration>(end - start).count();
+  }
+
  public:
   std::function<void(std::string result)> dumpHandle;
 
  private:
   std::vector<std::pair<std::string, TimePoint>> points_;
   TimePoint start_;
+  typename std::conditional<ThreadSafe, std::mutex, fake_mutex>::type mutex_;
 };
