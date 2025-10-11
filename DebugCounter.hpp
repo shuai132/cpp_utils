@@ -5,7 +5,7 @@
 
 class DebugCounter {
  public:
-  explicit DebugCounter(std::string name) : name_(std::move(name)){};
+  explicit DebugCounter(std::string name) : name_(std::move(name)) {};
   DebugCounter(const DebugCounter &) = delete;
   void operator=(const DebugCounter &) = delete;
   DebugCounter(DebugCounter &&) = delete;

@@ -88,7 +88,7 @@ class RingBuffer {
   }
 
  private:
-  value_type buffer_[N];
+  value_type buffer_[N]{};
   size_type head_ = 0;
   size_type tail_ = 0;
   size_type size_ = 0;

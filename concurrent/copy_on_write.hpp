@@ -25,9 +25,14 @@ class copy_on_write {
   copy_on_write(std::initializer_list<E> il) : data_(std::make_shared<T>(std::move(il))) {}
 
   void lockWrite(const std::function<void(const ST&)>& op) {
-    ST d = std::make_shared<T>();
     std::lock_guard<std::mutex> lock(mutex_);
-    *d = *data_;  // deep copy
+    ST d;
+    // Only copy if there are other references
+    if (data_.use_count() > 1) {
+      d = std::make_shared<T>(*data_);  // deep copy
+    } else {
+      d = data_;  // Reuse existing data
+    }
     op(d);
     std::atomic_store(&data_, d);
   }

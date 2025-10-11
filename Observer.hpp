@@ -86,6 +86,28 @@ class ObserverImpl : noncopyable, public ObserverBase, public std::enable_shared
     }
   }
 
+  template <typename... Args>
+  void emit2(const Args &...args) {
+    // Copy connections to avoid holding lock during callbacks
+    std::map<ObserverId, std::pair<Func, SchedulerSp>> connections_copy;
+    {
+      std::lock_guard<std::mutex> lock(observerMutex_);
+      connections_copy = connections_;
+    }
+
+    // Call callbacks outside of lock to avoid deadlock
+    for (const auto &item : connections_copy) {
+      auto &pair = item.second;
+      if (pair.second == nullptr) {
+        pair.first(args...);
+      } else {
+        pair.second->call([=] {
+          pair.first(args...);
+        });
+      }
+    }
+  }
+
  private:
   ObserverId observerId_ = 0;
   std::map<ObserverId, std::pair<Func, SchedulerSp>> connections_;

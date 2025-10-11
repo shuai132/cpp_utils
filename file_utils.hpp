@@ -12,7 +12,11 @@ inline std::shared_ptr<uint8_t> read_file(const std::string &file, size_t *size)
     return nullptr;
   }
   ifs.seekg(0, std::ios::end);
-  *size = ifs.tellg();
+  std::streampos file_size = ifs.tellg();
+  if (file_size < 0) {
+    return nullptr;
+  }
+  *size = static_cast<size_t>(file_size);
   ifs.seekg(0, std::ios::beg);
 
   std::shared_ptr<uint8_t> file_data(new uint8_t[*size], [](const uint8_t *p) {
@@ -20,7 +24,10 @@ inline std::shared_ptr<uint8_t> read_file(const std::string &file, size_t *size)
   });
   char *ptr = reinterpret_cast<char *>(file_data.get());
 
-  ifs.read(ptr, *size);  // NOLINT(cppcoreguidelines-narrowing-conversions)
+  ifs.read(ptr, static_cast<std::streamsize>(*size));
+  if (!ifs) {
+    return nullptr;
+  }
   ifs.close();
   return file_data;
 }

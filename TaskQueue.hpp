@@ -19,12 +19,18 @@ class TaskQueue {
   }
 
   void poll() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    while (!tasks_.empty()) {
-      const auto& runnable = tasks_.front();
+    while (true) {
+      Runnable runnable;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (tasks_.empty()) {
+          break;
+        }
+        runnable = std::move(tasks_.front());
+        tasks_.pop();
+      }
       if (runnable) {
         runnable();
-        tasks_.pop();
       }
     }
   }

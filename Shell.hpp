@@ -55,8 +55,10 @@ Result exec(const std::string &command) {
 
   // avoid deadlock
   int fp = open("/dev/null", O_WRONLY);
-  dup2(fp, STDIN_FILENO);
-  close(fp);
+  if (fp >= 0) {
+    dup2(fp, STDIN_FILENO);
+    close(fp);
+  }
 
   mutex.lock();
   FILE *pipe = popen(command.c_str(), "r");

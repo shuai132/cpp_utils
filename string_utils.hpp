@@ -49,6 +49,9 @@ static inline std::string Join(const std::vector<std::string> &tokens, const std
   if (trim_empty) {
     return Join(Compact(tokens), delim, false);
   } else {
+    if (tokens.empty()) {
+      return "";
+    }
     std::stringstream ss;
     for (size_t i = 0; i < tokens.size() - 1; ++i) {
       ss << tokens[i] << delim;
@@ -97,13 +100,17 @@ static inline std::string ReplaceAll(const std::string &source, const std::strin
 
 static inline std::string ToUpper(const std::string &str) {
   std::string s(str);
-  std::transform(s.begin(), s.end(), s.begin(), toupper);
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+    return std::toupper(c);
+  });
   return s;
 }
 
 static inline std::string ToLower(const std::string &str) {
   std::string s(str);
-  std::transform(s.begin(), s.end(), s.begin(), tolower);
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+    return std::tolower(c);
+  });
   return s;
 }
 

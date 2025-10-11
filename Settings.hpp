@@ -38,12 +38,20 @@ class Settings {
   };
 
   void clear() {
-    std::ofstream(file_path_).write("{}", sizeof("{}"));
+    std::ofstream ofs(file_path_);
+    if (ofs) {
+      ofs.write("{}", sizeof("{}") - 1);
+      ofs.close();
+    }
   }
 
   void save() {
     auto data = json_.dump();
-    std::ofstream(file_path_).write(data.data(), (std::streamsize)data.size());
+    std::ofstream ofs(file_path_);
+    if (ofs) {
+      ofs.write(data.data(), (std::streamsize)data.size());
+      ofs.close();
+    }
   }
 
  private:
