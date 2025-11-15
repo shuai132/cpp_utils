@@ -38,7 +38,7 @@ file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/tests/*.cpp)
 foreach (file ${CPP_SRC_LIST})
     string(REGEX REPLACE ".*tests|.cpp|/|\\\\" "" target_name ${file})
 
-    set(unsupported_list Shell MutexSystemV MutexPosix make_unique thread_safe memory_fence)
+    set(unsupported_list MutexSystemV MutexPosix make_unique thread_safe memory_fence)
     if (WIN32 AND target_name IN_LIST unsupported_list)
         message(STATUS "Windows skip: ${target_name}")
         continue()

@@ -113,7 +113,6 @@ jobs:
         run: ./test_Reference${{ matrix.env.BIN_SUFFIX }}
 
       - name: test_Shell
-        if: matrix.os != 'windows-latest'
         working-directory: build
         run: ./test_Shell${{ matrix.env.BIN_SUFFIX }}
 

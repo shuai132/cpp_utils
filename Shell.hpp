@@ -1,11 +1,24 @@
 #pragma once
 
+#ifdef _WIN32
+#include <io.h>
+#include <process.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#endif
+#else
 #include <sys/fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <array>
 #include <csignal>
+#endif
+
+#include <array>
 #include <cstring>
 #include <mutex>
 #include <ostream>
@@ -49,9 +62,11 @@ Result exec(const std::string &command) {
   static std::mutex mutex;
 
   std::string result;
+
 #ifdef _WIN32
 #define popen _popen
 #define pclose _pclose
+  // On Windows, we don't need to handle SIGCHLD
 #else
   struct sigaction act_tmp, act_old;  // NOLINT
   act_tmp.sa_handler = SIG_DFL;
@@ -64,10 +79,17 @@ Result exec(const std::string &command) {
   };
 #endif
 
+#ifndef _WIN32
   // Save original stdin and redirect to /dev/null to avoid deadlock
   int stdin_save = dup(STDIN_FILENO);
   if (stdin_save == -1) {
-    return {STDIN_SAVE_ERROR, "Failed to save stdin: " + std::string(strerror(errno))};
+#ifdef _WIN32
+    char error_msg[256];
+    strerror_s(error_msg, sizeof(error_msg), errno);
+    return {static_cast<int>(ExitCode::STDIN_SAVE_ERROR), "Failed to save stdin: " + std::string(error_msg)};
+#else
+    return {static_cast<int>(ExitCode::STDIN_SAVE_ERROR), "Failed to save stdin: " + std::string(strerror(errno))};
+#endif
   }
   defer {
     dup2(stdin_save, STDIN_FILENO);
@@ -80,13 +102,14 @@ Result exec(const std::string &command) {
     dup2(fp, STDIN_FILENO);
     close(fp);
   }
+#endif
 
   mutex.lock();
   FILE *pipe = popen(command.c_str(), "r");
   mutex.unlock();
 
   if (pipe == nullptr) {
-    return {POPEN_FAILED, "popen() failed!"};
+    return {static_cast<int>(ExitCode::POPEN_FAILED), "popen() failed!"};
   }
 
   // Note: fread() does not throw C++ exceptions, so try-catch is not useful here
@@ -97,21 +120,33 @@ Result exec(const std::string &command) {
     if (ferror(pipe)) {
       // Check for error during read
       pclose(pipe);
-      return {READ_ERROR, "Error reading from command: " + std::string(strerror(errno))};
+#ifdef _WIN32
+      char error_msg[256];
+      strerror_s(error_msg, sizeof(error_msg), errno);
+      return {static_cast<int>(ExitCode::READ_ERROR), "Error reading from command: " + std::string(error_msg)};
+#else
+      return {static_cast<int>(ExitCode::READ_ERROR), "Error reading from command: " + std::string(strerror(errno))};
+#endif
     }
     result += std::string(buffer.data(), bytesRead);
   }
 
   int ret = pclose(pipe);
   if (ret == -1) {
-    return Result{PCLOSE_FAILED, "pclose() failed: " + std::string(strerror(errno))};
+#ifdef _WIN32
+    char error_msg[256];
+    strerror_s(error_msg, sizeof(error_msg), errno);
+    return Result{static_cast<int>(ExitCode::PCLOSE_FAILED), "pclose() failed: " + std::string(error_msg)};
+#else
+    return Result{static_cast<int>(ExitCode::PCLOSE_FAILED), "pclose() failed: " + std::string(strerror(errno))};
+#endif
   } else {
 #ifndef _WIN32
     if (WIFEXITED(ret)) {  // normal exit()
       int exitcode = WEXITSTATUS(ret);
       return Result{exitcode, result};
     } else {  // other error (e.g., killed by signal)
-      return Result{OTHER_ERROR, result};
+      return Result{static_cast<int>(ExitCode::OTHER_ERROR), result};
     }
 #else
     // On Windows, popen/pclose doesn't give detailed exit information
