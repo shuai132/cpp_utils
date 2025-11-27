@@ -59,4 +59,8 @@ if (cpp_utils_ENABLE_TEST_CODE)
         string(REGEX REPLACE ".*test_code|.cpp|/|\\\\" "" target_name ${file})
         add_executable(${target_name} ${file})
     endforeach ()
+
+    set_target_properties(coroutine PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED ON)
 endif ()
