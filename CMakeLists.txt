@@ -60,6 +60,7 @@ if (cpp_utils_ENABLE_TEST_CODE)
         add_executable(${target_name} ${file})
     endforeach ()
 
+    # C++20
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
     if (COMPILER_SUPPORTS_CXX20 OR MSVC_VERSION GREATER_EQUAL 1929)
@@ -74,5 +75,21 @@ if (cpp_utils_ENABLE_TEST_CODE)
         endforeach ()
     else ()
         message(STATUS "Compiler does not support C++20, skipping cpp20 test code")
+    endif ()
+
+    # C++23
+    check_cxx_compiler_flag("-std=c++23" COMPILER_SUPPORTS_CXX23)
+    if (COMPILER_SUPPORTS_CXX23 OR MSVC_VERSION GREATER_EQUAL 1930)
+        message(STATUS "Compiler supports C++23, building cpp23 test code")
+        file(GLOB CPP23_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/cpp23/*.cpp)
+        foreach (file ${CPP23_SRC_LIST})
+            string(REGEX REPLACE ".*cpp23[/\\\\]|.cpp" "" target_name ${file})
+            add_executable(cpp23_${target_name} ${file})
+            set_target_properties(cpp23_${target_name} PROPERTIES
+                    CXX_STANDARD 23
+                    CXX_STANDARD_REQUIRED ON)
+        endforeach ()
+    else ()
+        message(STATUS "Compiler does not support C++23, skipping cpp23 test code")
     endif ()
 endif ()
