@@ -54,13 +54,25 @@ link_libraries(test_lib_a)
 if (cpp_utils_ENABLE_TEST_CODE)
     add_compile_options(-g)
 
-    file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/*.cpp)
+    file(GLOB CPP_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/*.cpp)
     foreach (file ${CPP_SRC_LIST})
-        string(REGEX REPLACE ".*test_code|.cpp|/|\\\\" "" target_name ${file})
+        string(REGEX REPLACE ".*test_code[/\\\\]|.cpp" "" target_name ${file})
         add_executable(${target_name} ${file})
     endforeach ()
 
-    set_target_properties(coroutine PROPERTIES
-            CXX_STANDARD 20
-            CXX_STANDARD_REQUIRED ON)
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
+    if (COMPILER_SUPPORTS_CXX20 OR MSVC_VERSION GREATER_EQUAL 1929)
+        message(STATUS "Compiler supports C++20, building cpp20 test code")
+        file(GLOB CPP20_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/test_code/cpp20/*.cpp)
+        foreach (file ${CPP20_SRC_LIST})
+            string(REGEX REPLACE ".*cpp20[/\\\\]|.cpp" "" target_name ${file})
+            add_executable(cpp20_${target_name} ${file})
+            set_target_properties(cpp20_${target_name} PROPERTIES
+                    CXX_STANDARD 20
+                    CXX_STANDARD_REQUIRED ON)
+        endforeach ()
+    else ()
+        message(STATUS "Compiler does not support C++20, skipping cpp20 test code")
+    endif ()
 endif ()
