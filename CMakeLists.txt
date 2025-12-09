@@ -5,6 +5,7 @@ option(cpp_utils_DISABLE_DETAIL_PRINT "" OFF)
 option(cpp_utils_ENABLE_SANITIZE "" OFF)
 option(cpp_utils_ENABLE_TEST_CODE "" OFF)
 
+include_directories($ENV{ASIO_PATH})
 if (cpp_utils_ENABLE_SANITIZE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
     set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")

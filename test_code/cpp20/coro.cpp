@@ -1,0 +1,84 @@
+#define DEBUG_CORO_PROMISE_LEAK
+
+#include "coro/coro.hpp"
+
+#include <thread>
+
+#include "assert_def.h"
+#include "log.h"
+
+struct BigObject {
+  uint8_t data[1024 * 1024 * 1]{};
+};
+
+using namespace coro;
+
+callback_awaiter<void> delay_ms(int delay_ms) {
+  return callback_awaiter<void>([delay_ms](auto callback) {
+    std::thread([delay_ms, callback = std::move(callback)] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+      callback();
+    }).detach();
+  });
+}
+
+async<int> coro_fun() {
+  LOG("delay_ms begin");
+  co_await delay_ms(1000);
+  LOG("delay_ms end");
+
+  LOG("callback_awaiter begin");
+  auto ret = co_await callback_awaiter<int>([&](auto callback) {
+    std::thread([callback = std::move(callback)] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      callback(123);
+    }).detach();
+  });
+  ASSERT(ret == 123);
+  LOG("callback_awaiter end");
+  co_return ret;
+}
+
+async<void> coro_task() {
+  BigObject o;
+  o.data[1024] = 1;
+  int ret = co_await coro_fun();
+  LOG("coro_test: %d, %d", ret, o.data[1024]);
+  ASSERT(ret == 123);
+  ASSERT(o.data[1024] == 1);
+}
+
+async<void> loop_task(const char* tag, int ms) {
+  int count = 3;
+  while (count--) {
+    co_await delay_ms(ms);
+    LOG("%s: %d", tag, ms);
+  }
+}
+
+void test_coro(executor& executor) {
+  co_spawn(executor, loop_task("A", 100));
+  co_spawn(executor, loop_task("B", 200));
+  co_spawn(executor, loop_task("C", 300));
+
+  co_spawn(executor, coro_task());
+}
+
+void debug_and_stop(executor& executor) {
+  std::thread([&executor] {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    debug_coro_promise::dump();
+    ASSERT(debug_coro_promise::debug_coro_leak.empty());
+    executor.stop();
+  }).detach();
+}
+
+int main() {
+  LOG("init");
+  executor executor;
+  test_coro(executor);
+  debug_and_stop(executor);
+  LOG("run_loop...");
+  executor.run_loop();
+  return 0;
+}
