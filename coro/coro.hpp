@@ -152,11 +152,11 @@ struct final_awaitable {
 
 template <typename T>
 struct awaitable_promise : awaitable_promise_value<T>, debug_coro_promise {
+  awaitable<T> get_return_object();
+
   std::suspend_always initial_suspend() {
     return {};
   }
-
-  awaitable<T> get_return_object();
 
   final_awaitable<T> final_suspend() noexcept {
     return final_awaitable<T>{this};
@@ -251,16 +251,14 @@ struct callback_awaiter : callback_awaiter_base<T> {
   template <typename Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
     if constexpr (std::is_void_v<T>) {
-      callback_function_([handle]() {
-        auto executor = handle.promise().executor_;
+      callback_function_([handle, executor = handle.promise().executor_]() {
         executor->dispatch([handle] {
           handle.resume();
         });
       });
     } else {
-      callback_function_([handle, this](T value) {
+      callback_function_([handle, this, executor = handle.promise().executor_](T value) {
         this->result_ = std::move(value);
-        auto executor = handle.promise().executor_;
         executor->dispatch([handle] {
           handle.resume();
         });
