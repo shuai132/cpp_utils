@@ -258,8 +258,8 @@ struct callback_awaiter : callback_awaiter_base<T> {
       });
     } else {
       callback_function_([handle, this, executor = handle.promise().executor_](T value) {
-        this->result_ = std::move(value);
-        executor->dispatch([handle] {
+        executor->dispatch([handle, this, value = std::move(value)]() mutable {
+          this->result_ = std::move(value);
           handle.resume();
         });
       });

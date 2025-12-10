@@ -2,13 +2,17 @@ cmake_minimum_required(VERSION 3.13)
 project(cpp_utils)
 
 option(cpp_utils_DISABLE_DETAIL_PRINT "" OFF)
-option(cpp_utils_ENABLE_SANITIZE "" OFF)
+option(cpp_utils_ENABLE_SANITIZE_ADDRESS "" OFF)
+option(cpp_utils_ENABLE_SANITIZE_THREAD "" OFF)
 option(cpp_utils_ENABLE_TEST_CODE "" OFF)
 
-include_directories($ENV{ASIO_PATH})
-if (cpp_utils_ENABLE_SANITIZE)
+if (cpp_utils_ENABLE_SANITIZE_ADDRESS)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
     set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+endif ()
+if (cpp_utils_ENABLE_SANITIZE_THREAD)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
 endif ()
 
 if (MSVC)
@@ -21,6 +25,9 @@ else ()
     set(CMAKE_CXX_STANDARD 14)
     add_compile_options(-Wall -Wunused-parameter)
 endif ()
+
+# asio
+include_directories($ENV{ASIO_PATH})
 
 # for github actions/ci
 if (cpp_utils_DISABLE_DETAIL_PRINT)

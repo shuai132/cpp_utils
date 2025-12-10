@@ -76,9 +76,13 @@ void test_coro(executor& executor) {
 void debug_and_stop(executor& executor) {
   std::thread([&executor] {
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    debug_coro_promise::dump();
-    ASSERT(debug_coro_promise::debug_coro_leak.empty());
-    executor.stop();
+    executor.post([&executor] {
+#ifdef DEBUG_CORO_PROMISE_LEAK
+      debug_coro_promise::dump();
+      ASSERT(debug_coro_promise::debug_coro_leak.empty());
+#endif
+      executor.stop();
+    });
   }).detach();
 }
 
