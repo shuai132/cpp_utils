@@ -17,7 +17,7 @@
  */
 template <bool ThreadSafe = false, typename Duration = std::chrono::milliseconds>
 class PerfTracker {
-  struct fake_mutex {
+  struct FakeMutex {
     void lock() {}
     void unlock() {}
   };
@@ -25,7 +25,7 @@ class PerfTracker {
   using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
  public:
-  explicit PerfTracker(size_t capacity = 64) {
+  explicit PerfTracker(bool autodump = true, size_t capacity = 64) : autodump_(autodump) {
     points_.reserve(capacity);
     start_ = std::chrono::steady_clock::now();
   }
@@ -35,7 +35,9 @@ class PerfTracker {
   PerfTracker(PerfTracker &&) noexcept = default;
 
   ~PerfTracker() {
-    dump();
+    if (autodump_) {
+      dump();
+    }
   }
 
   void track(std::string tag) {
@@ -50,6 +52,12 @@ class PerfTracker {
     } else {
       std::cout << result << std::flush;
     }
+  }
+
+  template <class D = std::chrono::milliseconds>
+  uint64_t elapsed() const {
+    auto end = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<D>(end - start_).count();
   }
 
   void reset() {
@@ -75,7 +83,7 @@ class PerfTracker {
   }
 
  private:
-  inline uint64_t duration(TimePoint end, TimePoint start) {
+  inline uint64_t duration(TimePoint end, TimePoint start) const {
     return std::chrono::duration_cast<Duration>(end - start).count();
   }
 
@@ -85,5 +93,6 @@ class PerfTracker {
  private:
   std::vector<std::pair<std::string, TimePoint>> points_;
   TimePoint start_;
-  typename std::conditional<ThreadSafe, std::mutex, fake_mutex>::type mutex_;
+  typename std::conditional<ThreadSafe, std::mutex, FakeMutex>::type mutex_;
+  bool autodump_;
 };
