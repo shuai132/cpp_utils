@@ -4,6 +4,7 @@
 
 #include <thread>
 
+#include "TimeCount.hpp"
 #include "assert_def.h"
 #include "log.h"
 
@@ -23,9 +24,14 @@ callback_awaiter<void> delay_ms(int delay_ms) {
 }
 
 async<int> coro_fun() {
-  LOG("delay_ms begin");
-  co_await delay_ms(1000);
-  LOG("delay_ms end");
+  {
+    LOG("delay_ms begin");
+    TimeCount t;
+    co_await delay_ms(1000);
+    ASSERT(t.elapsed() >= 1000);
+    ASSERT(std::abs(int(t.elapsed() - 1000)) < 100);
+    LOG("delay_ms end: %llu", t.elapsed());
+  }
 
   LOG("callback_awaiter begin");
   auto ret = co_await callback_awaiter<int>([&](auto callback) {
@@ -51,8 +57,11 @@ async<void> coro_task() {
 async<void> loop_task(const char* tag, int ms) {
   int count = 3;
   while (count--) {
+    TimeCount t;
     co_await delay_ms(ms);
-    LOG("%s: %d", tag, ms);
+    LOG("%s: %d, elapsed: %llu", tag, ms, t.elapsed());
+    ASSERT(t.elapsed() >= ms);
+    ASSERT(std::abs(int(t.elapsed() - ms)) < 100);
   }
 }
 
