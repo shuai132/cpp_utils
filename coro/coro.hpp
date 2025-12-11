@@ -6,6 +6,8 @@
 #include <optional>
 #include <queue>
 #include <thread>
+#include <type_traits>
+#include <utility>
 
 /// compiler check and debug config
 #if defined(DEBUG_CORO_PROMISE_LEAK)
@@ -171,6 +173,21 @@ struct awaitable {
   using promise_type = awaitable_promise<T>;
 
   explicit awaitable(std::coroutine_handle<promise_type> h) : current_coro_handle_(h) {}
+  ~awaitable() {
+    if (current_coro_handle_) {
+      if (current_coro_handle_.done()) {
+        current_coro_handle_.destroy();
+      }
+    }
+  }
+
+  /// disable copy
+  awaitable(const awaitable&) = delete;
+  awaitable(awaitable&) = delete;
+  awaitable& operator=(const awaitable&) = delete;
+  awaitable& operator=(awaitable&) = delete;
+
+  /// enable move
   awaitable(awaitable&& other) noexcept : current_coro_handle_(other.current_coro_handle_) {
     other.current_coro_handle_ = nullptr;
   }
@@ -182,18 +199,8 @@ struct awaitable {
     }
     return *this;
   }
-  ~awaitable() {
-    if (current_coro_handle_) {
-      if (current_coro_handle_.done()) {
-        current_coro_handle_.destroy();
-      }
-    }
-  }
-  awaitable(const awaitable&) = delete;
-  awaitable(awaitable&) = delete;
-  awaitable& operator=(const awaitable&) = delete;
-  awaitable& operator=(awaitable&) = delete;
 
+  /// co_await
   bool await_ready() const noexcept {
     return false;
   }

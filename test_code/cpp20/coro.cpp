@@ -27,9 +27,9 @@ async<int> coro_fun() {
   {
     LOG("delay_ms begin");
     TimeCount t;
-    co_await delay_ms(1000);
-    ASSERT(t.elapsed() >= 1000);
-    ASSERT(std::abs(int(t.elapsed() - 1000)) < 100);
+    co_await delay_ms(500);
+    ASSERT(t.elapsed() >= 500);
+    ASSERT(std::abs(int(t.elapsed() - 500)) < 100);
     LOG("delay_ms end: %llu", t.elapsed());
   }
 
@@ -65,17 +65,9 @@ async<void> loop_task(const char* tag, int ms) {
   }
 }
 
-void test_coro(executor& executor) {
-  co_spawn(executor, loop_task("A", 100));
-  co_spawn(executor, loop_task("B", 200));
-  co_spawn(executor, loop_task("C", 300));
-
-  co_spawn(executor, coro_task());
-}
-
-void debug_and_stop(executor& executor) {
-  std::thread([&executor] {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+void debug_and_stop(executor& executor, int wait_ms = 1000) {
+  std::thread([&executor, wait_ms] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
     executor.post([&executor] {
 #ifdef DEBUG_CORO_PROMISE_LEAK
       debug_coro_promise::dump();
@@ -86,10 +78,30 @@ void debug_and_stop(executor& executor) {
   }).detach();
 }
 
+void test_coro(executor& executor) {
+  co_spawn(executor, loop_task("A", 100));
+  co_spawn(executor, loop_task("B", 200));
+  co_spawn(executor, loop_task("C", 300));
+
+  co_spawn(executor, coro_task());
+}
+
+void test_simple(executor& executor) {
+  co_spawn(executor, []() -> async<void> {
+    TimeCount t;
+    const auto ms = 100;
+    co_await delay_ms(ms);
+    LOG("%s: %d, elapsed: %llu", "test_simple", ms, t.elapsed());
+    ASSERT(t.elapsed() >= ms);
+    ASSERT(std::abs(int(t.elapsed() - ms)) < 100);
+  }());
+}
+
 int main() {
   LOG("init");
   executor executor;
   test_coro(executor);
+  test_simple(executor);
   debug_and_stop(executor);
   LOG("run_loop...");
   executor.run_loop();
