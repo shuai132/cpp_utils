@@ -26,6 +26,9 @@ else ()
     add_compile_options(-Wall -Wunused-parameter)
 endif ()
 
+# include
+include_directories(include)
+
 # asio
 include_directories($ENV{ASIO_PATH})
 
