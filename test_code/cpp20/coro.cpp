@@ -84,6 +84,11 @@ void test_coro(executor& executor) {
   co_spawn(executor, loop_task("C", 300));
 
   co_spawn(executor, coro_task());
+  // or: coro_task().detach(executor);
+
+  coro_task().detach_with_callback(executor, [] {
+    LOG("coro_task finished");
+  });
 }
 
 void test_simple(executor& executor) {

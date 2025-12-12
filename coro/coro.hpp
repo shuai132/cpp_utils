@@ -217,6 +217,25 @@ struct awaitable {
     return current_coro_handle_.promise().get_value();
   }
 
+  auto detach(auto& executor) {
+    current_coro_handle_.promise().executor_ = &executor;
+    current_coro_handle_.resume();
+    return std::move(*this);
+  }
+
+  template <typename Function>
+  auto detach_with_callback(auto& executor, Function completion_handler) {
+    auto launched_coro = [](awaitable<T> lazy, auto completion_handler) mutable -> awaitable<void> {
+      if constexpr (std::is_void_v<T>) {
+        co_await std::move(lazy);
+        completion_handler();
+      } else {
+        completion_handler(co_await std::move(lazy));
+      }
+    }(std::move(*this), std::move(completion_handler));
+    return launched_coro.detach(executor);
+  }
+
   std::coroutine_handle<promise_type> current_coro_handle_;
 };
 
@@ -279,8 +298,7 @@ using async = awaitable<T>;
 
 template <typename T>
 auto co_spawn(executor& executor, T&& coro) {
-  coro.current_coro_handle_.promise().executor_ = &executor;
-  coro.current_coro_handle_.resume();
+  coro.detach(executor);
   return coro;
 }
 
