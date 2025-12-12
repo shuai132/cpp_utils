@@ -1,3 +1,5 @@
+#pragma once
+
 #include <condition_variable>
 #include <coroutine>
 #include <functional>
@@ -9,8 +11,21 @@
 #include <type_traits>
 #include <utility>
 
+/// options
+// #define CORO_DISABLE_EXCEPTION
+#ifndef CORO_DISABLE_EXCEPTION
+#include <variant>
+#else
+#include <optional>
+#endif
+
+#ifndef CORO_DEBUG_LIFECYCLE
+#define CORO_DEBUG_LIFECYCLE(...) (void)(0)
+// #define CORO_DEBUG_LIFECYCLE printf
+#endif
+
 /// compiler check and debug config
-#if defined(DEBUG_CORO_PROMISE_LEAK)
+#if defined(CORO_DEBUG_PROMISE_LEAK)
 #include <cstdio>
 #include <unordered_set>
 struct debug_coro_promise {
@@ -119,20 +134,51 @@ struct awaitable_promise_value {
     value_.template emplace<T>(std::forward<T>(val));
   }
 
-  void unhandled_exception() noexcept {}
-
-  T get_value() const {
-    return value_.value();
+  void unhandled_exception() noexcept {
+#ifndef CORO_DISABLE_EXCEPTION
+    value_.template emplace<std::exception_ptr>(std::current_exception());
+#endif
   }
 
+  T get_value() const {
+#ifndef CORO_DISABLE_EXCEPTION
+    if (std::holds_alternative<std::exception_ptr>(value_)) {
+      std::rethrow_exception(std::get<std::exception_ptr>(value_));
+    }
+    return std::get<T>(value_);
+#else
+    return value_.value();
+#endif
+  }
+
+#ifndef CORO_DISABLE_EXCEPTION
+  std::variant<std::exception_ptr, T> value_{nullptr};
+#else
   std::optional<T> value_;
+#endif
 };
 
 template <>
 struct awaitable_promise_value<void> {
   void return_void() noexcept {}
-  void unhandled_exception() noexcept {}
-  void get_value() const {}
+
+  void unhandled_exception() noexcept {
+#ifndef CORO_DISABLE_EXCEPTION
+    exception_ = std::current_exception();
+#endif
+  }
+
+  void get_value() const {
+#ifndef CORO_DISABLE_EXCEPTION
+    if (exception_) {
+      std::rethrow_exception(exception_);
+    }
+#endif
+  }
+
+#ifndef CORO_DISABLE_EXCEPTION
+  std::exception_ptr exception_{nullptr};
+#endif
 };
 
 template <typename T>
@@ -172,11 +218,17 @@ template <typename T>
 struct awaitable {
   using promise_type = awaitable_promise<T>;
 
-  explicit awaitable(std::coroutine_handle<promise_type> h) : current_coro_handle_(h) {}
+  explicit awaitable(std::coroutine_handle<promise_type> h) : current_coro_handle_(h) {
+    CORO_DEBUG_LIFECYCLE("awaitable: new: %p, handle: %p\n", this, h.address());
+  }
   ~awaitable() {
+    CORO_DEBUG_LIFECYCLE("awaitable: free: %p, handle: %p, done: %s\n", this, current_coro_handle_ ? current_coro_handle_.address() : nullptr,
+                         current_coro_handle_ ? current_coro_handle_.done() ? "yes" : "no" : "null");
     if (current_coro_handle_) {
       if (current_coro_handle_.done()) {
         current_coro_handle_.destroy();
+      } else {
+        current_coro_handle_.resume();
       }
     }
   }
@@ -189,9 +241,11 @@ struct awaitable {
 
   /// enable move
   awaitable(awaitable&& other) noexcept : current_coro_handle_(other.current_coro_handle_) {
+    CORO_DEBUG_LIFECYCLE("awaitable: move(c): %p to %p, h: %p\n", &other, this, current_coro_handle_.address());
     other.current_coro_handle_ = nullptr;
   }
   awaitable& operator=(awaitable&& other) noexcept {
+    CORO_DEBUG_LIFECYCLE("awaitable: move(=): %p to %p, h: %p\n", &other, this, current_coro_handle_.address());
     if (this != &other) {
       if (current_coro_handle_) current_coro_handle_.destroy();
       current_coro_handle_ = other.current_coro_handle_;
@@ -219,12 +273,12 @@ struct awaitable {
 
   auto detach(auto& executor) {
     current_coro_handle_.promise().executor_ = &executor;
-    current_coro_handle_.resume();
     return std::move(*this);
   }
 
   template <typename Function>
   auto detach_with_callback(auto& executor, Function completion_handler) {
+    // todo: maybe exception
     auto launched_coro = [](awaitable<T> lazy, auto completion_handler) mutable -> awaitable<void> {
       if constexpr (std::is_void_v<T>) {
         co_await std::move(lazy);

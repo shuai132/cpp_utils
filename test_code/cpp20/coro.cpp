@@ -1,4 +1,6 @@
-#define DEBUG_CORO_PROMISE_LEAK
+#define CORO_DEBUG_PROMISE_LEAK
+// #define CORO_DISABLE_EXCEPTION
+// #define CORO_DEBUG_LIFECYCLE printf
 
 #include "coro/coro.hpp"
 
@@ -54,6 +56,30 @@ async<void> coro_task() {
   ASSERT(o.data[1024] == 1);
 }
 
+async<int> coro_task_int() {
+  co_return 1;
+}
+async<int> coro_task_exception() {
+#ifndef CORO_DISABLE_EXCEPTION
+  bool flag = false;
+  try {
+    auto v = co_await []() -> async<int> {
+      throw std::runtime_error("coro_task_exception");
+      co_return 1;
+    }();
+    co_return v;
+  } catch (std::exception& e) {
+    LOG("exception: %s", e.what());
+    flag = true;
+  }
+  ASSERT(flag);
+#endif
+
+  co_return co_await []() -> async<int> {
+    co_return 2;
+  }();
+}
+
 async<void> loop_task(const char* tag, int ms) {
   int count = 3;
   while (count--) {
@@ -69,7 +95,7 @@ void debug_and_stop(executor& executor, int wait_ms = 1000) {
   std::thread([&executor, wait_ms] {
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
     executor.post([&executor] {
-#ifdef DEBUG_CORO_PROMISE_LEAK
+#ifdef CORO_DEBUG_PROMISE_LEAK
       debug_coro_promise::dump();
       ASSERT(debug_coro_promise::debug_coro_leak.empty());
 #endif
@@ -86,8 +112,15 @@ void test_coro(executor& executor) {
   co_spawn(executor, coro_task());
   // or: coro_task().detach(executor);
 
-  coro_task().detach_with_callback(executor, [] {
+  coro_task_int().detach(executor);
+
+  coro_task().detach_with_callback(executor, [&] {
     LOG("coro_task finished");
+  });
+
+  coro_task_exception().detach_with_callback(executor, [&](int v) {
+    LOG("coro_task_exception finished: %d", v);
+    ASSERT(v == 2);
   });
 }
 
