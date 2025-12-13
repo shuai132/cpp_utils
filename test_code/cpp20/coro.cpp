@@ -1,23 +1,38 @@
+/// config debug
 #define CORO_DEBUG_PROMISE_LEAK
 // #define CORO_DISABLE_EXCEPTION
 #include "log.h"
-#define CORO_DEBUG_LEAK_LOG LOG
+// #define CORO_DEBUG_LEAK_LOG LOG
 // #define CORO_DEBUG_LIFECYCLE LOG
-
-#include <thread>
 
 #include "TimeCount.hpp"
 #include "assert_def.h"
 #include "coro/coro.hpp"
 
+/// config executor
+#define CORO_EXECUTOR_SINGLE_THREAD
+#define CORO_EXECUTOR_POLL
+
+#ifdef CORO_EXECUTOR_SINGLE_THREAD
+#include "coro/executor_single_thread.hpp"
+#elif defined(CORO_EXECUTOR_POLL)
+#include "coro/executor_poll.hpp"
+#endif
+
 using namespace coro;
 
-callback_awaiter<void> delay_ms(int delay_ms) {
-  return callback_awaiter<void>([delay_ms](auto callback) {
-    std::thread([delay_ms, callback = std::move(callback)] {
-      std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+callback_awaiter<void> delay_ms_use_thread(int ms) {
+  return callback_awaiter<void>([ms](auto callback) {
+    std::thread([ms, callback = std::move(callback)] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(ms));
       callback();
     }).detach();
+  });
+}
+
+callback_awaiter<void> delay_ms(uint32_t ms) {
+  return callback_awaiter<void>([ms](auto executor, auto callback) {
+    executor->post_delayed(callback, ms);
   });
 }
 
@@ -32,7 +47,7 @@ async<int> coro_fun() {
   }
 
   LOG("callback_awaiter begin");
-  auto ret = co_await callback_awaiter<int>([&](auto callback) {
+  auto ret = co_await callback_awaiter<int>([](auto callback) {
     std::thread([callback = std::move(callback)] {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       callback(123);
@@ -86,10 +101,10 @@ async<void> loop_task(const char* tag, int ms) {
   }
 }
 
-void debug_and_stop(executor& executor, int wait_ms = 1000) {
+void debug_and_stop(auto& executor, int wait_ms = 1000) {
   std::thread([&executor, wait_ms] {
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-    executor.post([&executor] {
+    executor.dispatch([&executor] {
 #ifdef CORO_DEBUG_PROMISE_LEAK
       debug_coro_promise::dump();
       ASSERT(debug_coro_promise::debug_coro_leak.empty());
@@ -132,11 +147,24 @@ void test_simple(executor& executor) {
 
 int main() {
   LOG("init");
-  executor executor;
+#ifdef CORO_EXECUTOR_SINGLE_THREAD
+  executor_single_thread executor;
+#elif defined(CORO_EXECUTOR_POLL)
+  executor_poll executor;
+#endif
+
   test_coro(executor);
   test_simple(executor);
   debug_and_stop(executor);
-  LOG("run_loop...");
+
+  LOG("loop...");
+#ifdef CORO_EXECUTOR_SINGLE_THREAD
   executor.run_loop();
+#elif defined(CORO_EXECUTOR_POLL)
+  while (!executor.stopped()) {
+    executor.poll();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+#endif
   return 0;
 }

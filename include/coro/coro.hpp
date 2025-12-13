@@ -1,13 +1,9 @@
 #pragma once
 
-#include <condition_variable>
 #include <coroutine>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
-#include <queue>
-#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -69,63 +65,10 @@ struct callback_awaiter;
 /// executor
 namespace coro {
 struct executor {
-  std::mutex queue_mutex_;
-  std::atomic<bool> stop_{false};
-  std::condition_variable condition_;
-  std::queue<std::function<void()>> task_queue_;
-  std::thread::id running_thread_id_{};
-
-  void run_loop() {
-    running_thread_id_ = std::this_thread::get_id();
-    for (;;) {
-      std::function<void()> task;
-      {
-        std::unique_lock<std::mutex> lock(queue_mutex_);
-        condition_.wait(lock, [this] {
-          return stop_ || !task_queue_.empty();
-        });
-
-        if (stop_ && task_queue_.empty()) {
-          return;
-        }
-
-        task = std::move(task_queue_.front());
-        task_queue_.pop();
-      }
-
-      task();
-    }
-  }
-
-  void stop() {
-    {
-      std::lock_guard<std::mutex> lock(queue_mutex_);
-      stop_ = true;
-    }
-    condition_.notify_all();
-  }
-
-  ~executor() {
-    stop();
-  }
-
-  template <typename F>
-  void post(F&& f) {
-    {
-      std::lock_guard<std::mutex> lock(queue_mutex_);
-      task_queue_.emplace(std::forward<F>(f));
-    }
-    condition_.notify_one();
-  }
-
-  template <typename F>
-  void dispatch(F&& f) {
-    if (std::this_thread::get_id() == running_thread_id_) {
-      f();
-    } else {
-      post(std::forward<F>(f));
-    }
-  }
+  virtual ~executor() = default;
+  virtual void dispatch(std::function<void()> fn) = 0;
+  virtual void post_delayed(std::function<void()> fn, const uint32_t delay) = 0;
+  virtual void stop() = 0;
 };
 }  // namespace coro
 
@@ -325,7 +268,8 @@ awaitable<T> awaitable_promise<T>::get_return_object() {
 
 template <typename T>
 struct callback_awaiter_base {
-  using callback_function = std::function<void(std::function<void(T)>)>;
+  using callback_function_no_executor = std::function<void(std::function<void(T)>)>;
+  using callback_function_with_executor = std::function<void(executor*, std::function<void(T)>)>;
 
   T await_resume() noexcept {
     return std::move(result_);
@@ -336,17 +280,20 @@ struct callback_awaiter_base {
 
 template <>
 struct callback_awaiter_base<void> {
-  using callback_function = std::function<void(std::function<void()>)>;
+  using callback_function_no_executor = std::function<void(std::function<void()>)>;
+  using callback_function_with_executor = std::function<void(executor*, std::function<void()>)>;
 
   void await_resume() noexcept {}
 };
 
 template <typename T>
 struct callback_awaiter : callback_awaiter_base<T> {
-  using callback_function = callback_awaiter_base<T>::callback_function;
-  callback_function callback_function_;
+  using callback_function_no_executor = callback_awaiter_base<T>::callback_function_no_executor;
+  using callback_function_with_executor = callback_awaiter_base<T>::callback_function_with_executor;
+  std::variant<callback_function_no_executor, callback_function_with_executor> callback_function_;
 
-  explicit callback_awaiter(callback_function callback) : callback_function_(std::move(callback)) {}
+  explicit callback_awaiter(callback_function_no_executor callback) : callback_function_(std::move(callback)) {}
+  explicit callback_awaiter(callback_function_with_executor callback) : callback_function_(std::move(callback)) {}
   callback_awaiter(callback_awaiter&&) = default;
 
   bool await_ready() const noexcept {
@@ -355,19 +302,42 @@ struct callback_awaiter : callback_awaiter_base<T> {
 
   template <typename Promise>
   void await_suspend(std::coroutine_handle<Promise> handle) {
-    if constexpr (std::is_void_v<T>) {
-      callback_function_([handle, executor = handle.promise().executor_]() {
-        executor->dispatch([handle] {
-          handle.resume();
-        });
-      });
-    } else {
-      callback_function_([handle, this, executor = handle.promise().executor_](T value) {
-        executor->dispatch([handle, this, value = std::move(value)]() mutable {
-          this->result_ = std::move(value);
-          handle.resume();
-        });
-      });
+    auto executor = handle.promise().executor_;
+    switch (callback_function_.index()) {
+      case 0: {
+        auto& func = std::get<0>(callback_function_);
+        if constexpr (std::is_void_v<T>) {
+          func([handle, executor]() {
+            executor->dispatch([handle] {
+              handle.resume();
+            });
+          });
+        } else {
+          func([handle, this, executor](T value) {
+            executor->dispatch([handle, this, value = std::move(value)]() mutable {
+              this->result_ = std::move(value);
+              handle.resume();
+            });
+          });
+        }
+      } break;
+      case 1: {
+        auto& func = std::get<1>(callback_function_);
+        if constexpr (std::is_void_v<T>) {
+          func(executor, [handle, executor]() {
+            executor->dispatch([handle] {
+              handle.resume();
+            });
+          });
+        } else {
+          func(executor, [handle, this, executor](T value) {
+            executor->dispatch([handle, this, value = std::move(value)]() mutable {
+              this->result_ = std::move(value);
+              handle.resume();
+            });
+          });
+        }
+      } break;
     }
   }
 };
