@@ -19,9 +19,12 @@
 #include <optional>
 #endif
 
+#ifndef CORO_DEBUG_LEAK_LOG
+#define CORO_DEBUG_LEAK_LOG(...) (void)(0)
+#endif
+
 #ifndef CORO_DEBUG_LIFECYCLE
 #define CORO_DEBUG_LIFECYCLE(...) (void)(0)
-// #define CORO_DEBUG_LIFECYCLE printf
 #endif
 
 /// compiler check and debug config
@@ -31,18 +34,18 @@
 struct debug_coro_promise {
   inline static std::unordered_set<void*> debug_coro_leak;
   static void dump() {
-    printf("debug: debug_coro_leak.size: %zu\n", debug_coro_leak.size());
+    CORO_DEBUG_LEAK_LOG("debug: debug_coro_leak.size: %zu", debug_coro_leak.size());
   }
 
   void* operator new(std::size_t size) {
     void* ptr = std::malloc(size);
-    printf("new: %p, size: %zu\n", ptr, size);
+    CORO_DEBUG_LEAK_LOG("new: %p, size: %zu", ptr, size);
     debug_coro_leak.insert(ptr);
     return ptr;
   }
 
-  void operator delete(void* ptr, std::size_t size) {
-    printf("free: %p, size: %zu\n", ptr, size);
+  void operator delete(void* ptr, [[maybe_unused]] std::size_t size) {
+    CORO_DEBUG_LEAK_LOG("free: %p, size: %zu", ptr, size);
     debug_coro_leak.erase(ptr);
     std::free(ptr);
   }
@@ -186,14 +189,17 @@ struct final_awaitable {
   awaitable_promise<T>* parent;
 
   bool await_ready() noexcept {
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_ready: %p, parent: %p, p.handle: %p", this, parent, parent->continuation_.address());
     return !parent->continuation_;
   }
 
   std::coroutine_handle<> await_suspend(std::coroutine_handle<awaitable_promise<T>> h) noexcept {
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_suspend: %p, (handle): %p", this, h.address());
     return h.promise().continuation_;
   }
 
   void await_resume() noexcept {
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_resume: %p, parent: %p, p.handle: %p", this, parent, parent->continuation_.address());
     parent->get_value();
   }
 };
@@ -203,10 +209,12 @@ struct awaitable_promise : awaitable_promise_value<T>, debug_coro_promise {
   awaitable<T> get_return_object();
 
   std::suspend_always initial_suspend() {
+    CORO_DEBUG_LIFECYCLE("promise: initial_suspend: %p, handle: %p", this, continuation_.address());
     return {};
   }
 
   final_awaitable<T> final_suspend() noexcept {
+    CORO_DEBUG_LIFECYCLE("promise: final_suspend: %p, handle: %p", this, continuation_.address());
     return final_awaitable<T>{this};
   }
 
@@ -219,16 +227,16 @@ struct awaitable {
   using promise_type = awaitable_promise<T>;
 
   explicit awaitable(std::coroutine_handle<promise_type> h) : current_coro_handle_(h) {
-    CORO_DEBUG_LIFECYCLE("awaitable: new: %p, handle: %p\n", this, h.address());
+    CORO_DEBUG_LIFECYCLE("awaitable: new: %p, handle: %p", this, h.address());
   }
   ~awaitable() {
-    CORO_DEBUG_LIFECYCLE("awaitable: free: %p, handle: %p, done: %s\n", this, current_coro_handle_ ? current_coro_handle_.address() : nullptr,
+    CORO_DEBUG_LIFECYCLE("awaitable: free: %p, handle: %p, done: %s", this, current_coro_handle_ ? current_coro_handle_.address() : nullptr,
                          current_coro_handle_ ? current_coro_handle_.done() ? "yes" : "no" : "null");
     if (current_coro_handle_) {
       if (current_coro_handle_.done()) {
         current_coro_handle_.destroy();
       } else {
-        current_coro_handle_.resume();
+        // current_coro_handle_.resume();
       }
     }
   }
@@ -241,11 +249,11 @@ struct awaitable {
 
   /// enable move
   awaitable(awaitable&& other) noexcept : current_coro_handle_(other.current_coro_handle_) {
-    CORO_DEBUG_LIFECYCLE("awaitable: move(c): %p to %p, h: %p\n", &other, this, current_coro_handle_.address());
+    CORO_DEBUG_LIFECYCLE("awaitable: move(c): %p to %p, h: %p", &other, this, current_coro_handle_.address());
     other.current_coro_handle_ = nullptr;
   }
   awaitable& operator=(awaitable&& other) noexcept {
-    CORO_DEBUG_LIFECYCLE("awaitable: move(=): %p to %p, h: %p\n", &other, this, current_coro_handle_.address());
+    CORO_DEBUG_LIFECYCLE("awaitable: move(=): %p to %p, h: %p", &other, this, current_coro_handle_.address());
     if (this != &other) {
       if (current_coro_handle_) current_coro_handle_.destroy();
       current_coro_handle_ = other.current_coro_handle_;
@@ -256,11 +264,13 @@ struct awaitable {
 
   /// co_await
   bool await_ready() const noexcept {
+    CORO_DEBUG_LIFECYCLE("awaitable: await_ready: %p, h: %p", this, current_coro_handle_.address());
     return false;
   }
 
   template <typename Promise>
   auto await_suspend(std::coroutine_handle<Promise> h) {
+    CORO_DEBUG_LIFECYCLE("awaitable: await_suspend: %p, h: %p", this, current_coro_handle_.address());
     auto& promise = current_coro_handle_.promise();
     promise.executor_ = h.promise().executor_;
     promise.continuation_ = h;
@@ -268,12 +278,13 @@ struct awaitable {
   }
 
   T await_resume() {
+    CORO_DEBUG_LIFECYCLE("awaitable: await_resume: %p, h: %p", this, current_coro_handle_.address());
     return current_coro_handle_.promise().get_value();
   }
 
   auto detach(auto& executor) {
     current_coro_handle_.promise().executor_ = &executor;
-    return std::move(*this);
+    current_coro_handle_.resume();
   }
 
   template <typename Function>
@@ -295,7 +306,9 @@ struct awaitable {
 
 template <typename T>
 awaitable<T> awaitable_promise<T>::get_return_object() {
-  return awaitable<T>{std::coroutine_handle<awaitable_promise<T>>::from_promise(*this)};
+  auto handle = std::coroutine_handle<awaitable_promise<T>>::from_promise(*this);
+  CORO_DEBUG_LIFECYCLE("promise: get_return_object: %p, handle: %p", this, handle.address());
+  return awaitable<T>{handle};
 }
 
 template <typename T>

@@ -1,14 +1,14 @@
 #define CORO_DEBUG_PROMISE_LEAK
 // #define CORO_DISABLE_EXCEPTION
-// #define CORO_DEBUG_LIFECYCLE printf
-
-#include "coro/coro.hpp"
+#include "log.h"
+#define CORO_DEBUG_LEAK_LOG LOG
+#define CORO_DEBUG_LIFECYCLE LOG
 
 #include <thread>
 
 #include "TimeCount.hpp"
 #include "assert_def.h"
-#include "log.h"
+#include "coro/coro.hpp"
 
 struct BigObject {
   uint8_t data[1024 * 1024 * 1]{};
@@ -57,8 +57,10 @@ async<void> coro_task() {
 }
 
 async<int> coro_task_int() {
+  LOG("coro_task_int 1");
   co_return 1;
 }
+
 async<int> coro_task_exception() {
 #ifndef CORO_DISABLE_EXCEPTION
   bool flag = false;
