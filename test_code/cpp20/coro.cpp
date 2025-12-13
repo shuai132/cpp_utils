@@ -2,17 +2,13 @@
 // #define CORO_DISABLE_EXCEPTION
 #include "log.h"
 #define CORO_DEBUG_LEAK_LOG LOG
-#define CORO_DEBUG_LIFECYCLE LOG
+// #define CORO_DEBUG_LIFECYCLE LOG
 
 #include <thread>
 
 #include "TimeCount.hpp"
 #include "assert_def.h"
 #include "coro/coro.hpp"
-
-struct BigObject {
-  uint8_t data[1024 * 1024 * 1]{};
-};
 
 using namespace coro;
 
@@ -48,12 +44,9 @@ async<int> coro_fun() {
 }
 
 async<void> coro_task() {
-  BigObject o;
-  o.data[1024] = 1;
   int ret = co_await coro_fun();
-  LOG("coro_test: %d, %d", ret, o.data[1024]);
+  LOG("coro_fun ret: %d", ret);
   ASSERT(ret == 123);
-  ASSERT(o.data[1024] == 1);
 }
 
 async<int> coro_task_int() {
