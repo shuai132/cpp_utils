@@ -186,21 +186,30 @@ struct awaitable_promise_value<void> {
 
 template <typename T>
 struct final_awaitable {
-  awaitable_promise<T>* parent;
+  awaitable_promise<T>* self;
 
   bool await_ready() noexcept {
-    CORO_DEBUG_LIFECYCLE("final_awaitable: await_ready: %p, parent: %p, p.handle: %p", this, parent, parent->continuation_.address());
-    return !parent->continuation_;
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_ready: p: %p, p.h: %p", self, self->parent_handle_.address());
+    return false;
   }
 
   std::coroutine_handle<> await_suspend(std::coroutine_handle<awaitable_promise<T>> h) noexcept {
-    CORO_DEBUG_LIFECYCLE("final_awaitable: await_suspend: %p, (handle): %p", this, h.address());
-    return h.promise().continuation_;
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_suspend: p: %p, h: %p, p.h: %p", self, h.address(), h.promise().parent_handle_.address());
+    CORO_DEBUG_LIFECYCLE("done: %d", h.done());
+    // h.promise() is self
+    if (h.promise().parent_handle_) {
+      return h.promise().parent_handle_;
+    } else {
+      if (h.done() && !h.promise().awaitable_) {
+        h.destroy();
+      }
+      return std::noop_coroutine();
+    }
   }
 
   void await_resume() noexcept {
-    CORO_DEBUG_LIFECYCLE("final_awaitable: await_resume: %p, parent: %p, p.handle: %p", this, parent, parent->continuation_.address());
-    parent->get_value();
+    CORO_DEBUG_LIFECYCLE("final_awaitable: await_resume: %p, p.h: %p", self, self->parent_handle_.address());
+    self->get_value();
   }
 };
 
@@ -209,17 +218,18 @@ struct awaitable_promise : awaitable_promise_value<T>, debug_coro_promise {
   awaitable<T> get_return_object();
 
   std::suspend_always initial_suspend() {
-    CORO_DEBUG_LIFECYCLE("promise: initial_suspend: %p, handle: %p", this, continuation_.address());
+    CORO_DEBUG_LIFECYCLE("promise: initial_suspend: p: %p, p.h: %p", this, parent_handle_.address());
     return {};
   }
 
   final_awaitable<T> final_suspend() noexcept {
-    CORO_DEBUG_LIFECYCLE("promise: final_suspend: %p, handle: %p", this, continuation_.address());
+    CORO_DEBUG_LIFECYCLE("promise: final_suspend: p: %p, p.h: %p", this, parent_handle_.address());
     return final_awaitable<T>{this};
   }
 
-  std::coroutine_handle<> continuation_;
+  std::coroutine_handle<> parent_handle_{};
   executor* executor_ = nullptr;
+  awaitable<T>* awaitable_ = nullptr;
 };
 
 template <typename T>
@@ -227,16 +237,17 @@ struct awaitable {
   using promise_type = awaitable_promise<T>;
 
   explicit awaitable(std::coroutine_handle<promise_type> h) : current_coro_handle_(h) {
-    CORO_DEBUG_LIFECYCLE("awaitable: new: %p, handle: %p", this, h.address());
+    CORO_DEBUG_LIFECYCLE("awaitable: new: %p, h: %p", this, h.address());
+    h.promise().awaitable_ = this;
   }
   ~awaitable() {
-    CORO_DEBUG_LIFECYCLE("awaitable: free: %p, handle: %p, done: %s", this, current_coro_handle_ ? current_coro_handle_.address() : nullptr,
+    CORO_DEBUG_LIFECYCLE("awaitable: free: %p, h: %p, done: %s", this, current_coro_handle_ ? current_coro_handle_.address() : nullptr,
                          current_coro_handle_ ? current_coro_handle_.done() ? "yes" : "no" : "null");
     if (current_coro_handle_) {
       if (current_coro_handle_.done()) {
         current_coro_handle_.destroy();
       } else {
-        // current_coro_handle_.resume();
+        current_coro_handle_.promise().awaitable_ = nullptr;
       }
     }
   }
@@ -270,10 +281,9 @@ struct awaitable {
 
   template <typename Promise>
   auto await_suspend(std::coroutine_handle<Promise> h) {
-    CORO_DEBUG_LIFECYCLE("awaitable: await_suspend: %p, h: %p", this, current_coro_handle_.address());
-    auto& promise = current_coro_handle_.promise();
-    promise.executor_ = h.promise().executor_;
-    promise.continuation_ = h;
+    CORO_DEBUG_LIFECYCLE("awaitable: await_suspend: %p, h: %p, p.h: %p", this, current_coro_handle_.address(), h.address());
+    current_coro_handle_.promise().executor_ = h.promise().executor_;
+    current_coro_handle_.promise().parent_handle_ = h;
     return current_coro_handle_;
   }
 
@@ -284,7 +294,9 @@ struct awaitable {
 
   auto detach(auto& executor) {
     current_coro_handle_.promise().executor_ = &executor;
+    CORO_DEBUG_LIFECYCLE("awaitable: resume begin: %p, h: %p", this, current_coro_handle_.address());
     current_coro_handle_.resume();
+    CORO_DEBUG_LIFECYCLE("awaitable: resume end: %p, h: %p", this, current_coro_handle_.address());
   }
 
   template <typename Function>
@@ -307,7 +319,7 @@ struct awaitable {
 template <typename T>
 awaitable<T> awaitable_promise<T>::get_return_object() {
   auto handle = std::coroutine_handle<awaitable_promise<T>>::from_promise(*this);
-  CORO_DEBUG_LIFECYCLE("promise: get_return_object: %p, handle: %p", this, handle.address());
+  CORO_DEBUG_LIFECYCLE("promise: get_return_object: p: %p, h: %p", this, handle.address());
   return awaitable<T>{handle};
 }
 
