@@ -243,16 +243,23 @@ struct awaitable {
   }
 
   template <typename Function>
-  auto detach_with_callback(auto& executor, Function completion_handler) {
-    // todo: maybe exception
-    auto launched_coro = [](awaitable<T> lazy, auto completion_handler) mutable -> awaitable<void> {
-      if constexpr (std::is_void_v<T>) {
-        co_await std::move(lazy);
-        completion_handler();
-      } else {
-        completion_handler(co_await std::move(lazy));
+  auto detach_with_callback(auto& executor, Function completion_handler, std::function<void(std::exception_ptr)> exception_handler = nullptr) {
+    auto launched_coro = [](awaitable<T> lazy, auto completion_handler, auto exception_handler) mutable -> awaitable<void> {
+#ifndef CORO_DISABLE_EXCEPTION
+      try {
+#endif
+        if constexpr (std::is_void_v<T>) {
+          co_await std::move(lazy);
+          completion_handler();
+        } else {
+          completion_handler(co_await std::move(lazy));
+        }
+#ifndef CORO_DISABLE_EXCEPTION
+      } catch (...) {
+        if (exception_handler) exception_handler(std::current_exception());
       }
-    }(std::move(*this), std::move(completion_handler));
+#endif
+    }(std::move(*this), std::move(completion_handler), std::move(exception_handler));
     return launched_coro.detach(executor);
   }
 

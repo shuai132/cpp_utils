@@ -69,7 +69,7 @@ async<int> coro_task_int() {
   co_return 1;
 }
 
-async<int> coro_task_exception() {
+async<int> coro_task_exception(bool rethrow = false) {
 #ifndef CORO_DISABLE_EXCEPTION
   bool flag = false;
   try {
@@ -80,6 +80,9 @@ async<int> coro_task_exception() {
     co_return v;
   } catch (std::exception& e) {
     LOG("exception: %s", e.what());
+    if (rethrow) {
+      std::rethrow_exception(std::current_exception());
+    }
     flag = true;
   }
   ASSERT(flag);
@@ -132,6 +135,22 @@ void test_coro(executor& executor) {
     LOG("coro_task_exception finished: %d", v);
     ASSERT(v == 2);
   });
+
+#ifndef CORO_DISABLE_EXCEPTION
+  coro_task_exception(true).detach_with_callback(
+      executor,
+      [&](int) {
+        ASSERT(false);
+      },
+      [](const std::exception_ptr& e) {
+        try {
+          std::rethrow_exception(e);
+        } catch (const std::runtime_error& e) {
+          LOG("coro_task_exception(true) exception: %s", e.what());
+          ASSERT(std::string_view(e.what()) == "coro_task_exception");
+        }
+      });
+#endif
 }
 
 void test_simple(executor& executor) {
